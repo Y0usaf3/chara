@@ -12,14 +12,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - name: install rust toolchain
-        uses: actions-rs/toolchain@v1
+      - name: Install Rust toolchain
+        uses: https://code.forgejo.org/theoparis/rust-toolchain@master
         with:
           toolchain: stable
-          override: true
 
-      - name: build
-        run: cargo build --verbose
+      - name: Build
+        run: cargo build --verbose --release
 
-      - name: run tests
+      - name: Run tests
         run: cargo test --verbose
