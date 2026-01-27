@@ -8,7 +8,8 @@ pub struct Table {
     pub id: Option<TableId>,
     pub base: BaseId,
     pub name: String,
-    pub order: i32,
+    pub order: i32, // wait wait wait, why did i added a order ??? if that was the list i could
+    // just used the created_at lol
     pub created_at: Datetime,
     pub updated_at: Datetime,
 }

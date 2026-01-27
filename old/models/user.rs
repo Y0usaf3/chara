@@ -35,6 +35,8 @@ pub enum UserRole {
     Admin,
 }
 
+// me working on core/ : wait wtf why havent i used the email addr type WTF!
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct User {
     pub id: Option<UserId>,

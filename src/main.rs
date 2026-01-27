@@ -4,8 +4,7 @@
 
 #![allow(unexpected_cfgs)]
 
-mod models;
-mod services;
+mod core;
 
 #[macro_use]
 extern crate bitmask;

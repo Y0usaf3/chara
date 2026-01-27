@@ -53,7 +53,7 @@ macro_rules! impl_key { // god dang it macros are so damn hard to read, i wrote 
     }
 }
 
-// Inchelligence ☉ ‿ ⚆
+// Inchelligence ☉ ‿ ⚆ // oh lmao
 impl_key!(
     UserId,
     WorkspaceId,
