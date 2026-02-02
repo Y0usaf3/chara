@@ -30,9 +30,12 @@ pub enum TextConfig {
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum NumberConfig {
-    Basic {
-        precision: usize, /* 0 - 8*/
+    Number {
         default: Option<usize>,
+    },
+    Decimal {
+        default: Option<f32>,
+        precision: u8,
     },
     Currency {
         currency: Currency,
@@ -64,6 +67,7 @@ pub enum SelectConfig {
     Single { options: Vec<SelectOption> },
     Multi { options: Vec<SelectOption> },
 }
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub enum DateFormat {
     ISO,
@@ -91,14 +95,14 @@ pub enum DatetimeConfig {
         format: DateFormat,
     },
 }
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LinkType {
     OneToOne,
     OneToMany,
     ManyToMany,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum AggregateFunction {
     Count,
     Max,
@@ -137,6 +141,7 @@ pub enum ComputedTypes {
     ModifiedTime { format: DateFormat },
     AutoNumber { prefix: Prefix, start_at: usize },
 }
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum Prefix {
     Dot,

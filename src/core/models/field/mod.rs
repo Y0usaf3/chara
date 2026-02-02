@@ -6,7 +6,7 @@ use surrealdb::sql::Datetime;
 mod kinds;
 mod migration;
 
-use crate::core::models::field::kinds::*;
+pub use crate::core::models::field::kinds::*;
 
 /// ['src/core/models/field.md']
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
