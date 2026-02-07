@@ -4,6 +4,7 @@ use surrealdb::sql::Datetime;
 
 mod perm_methods;
 mod permissions;
+mod presets;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]

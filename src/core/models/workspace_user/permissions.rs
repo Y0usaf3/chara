@@ -31,83 +31,81 @@ pub struct TableSubPermissions {
 
 bitmask! {
     pub mask WorkspacePermissions: u32 where flags WorkspacePermission {
-        Edit = 0x1,
-        Delete = 0x2,
-        ManageRoles = 0x4,
-        ManageUsers = 0x8,
-        ExportData = 0x10,
-        ManageIntegrations = 0x20,
-        ViewAuditLogs = 0x40,
+        Edit               = 1 << 0, // OWNER / ADMIN (limited)
+        Delete             = 1 << 1, // OWNER
+        ManageRoles        = 1 << 2, // OWNER / ADMIN
+        ManageUsers        = 1 << 3, // OWNER / ADMIN
+        ExportData         = 1 << 4, // OWNER / ADMIN / USER
+        ManageIntegrations = 1 << 5, // OWNER / ADMIN
+        ViewAuditLogs      = 1 << 6, // OWNER / ADMIN
     }
 }
 
 bitmask! {
     pub mask WorkspaceUsersPermissions: u32 where flags WorkspaceUsersPermission {
-        Invite = 0x1,
-        Desactivate = 0x2,
-        Activate = 0x4,
-        Ban = 0x8,
-        Promote = 0x10,
-        Demote = 0x20,
-        ViewDeletedUsers = 0x40,
+        Invite           = 1 << 0, // OWNER / ADMIN / USER
+        Desactivate      = 1 << 1, // OWNER / ADMIN
+        Activate         = 1 << 2, // OWNER / ADMIN
+        Ban              = 1 << 3, // OWNER / ADMIN
+        Promote          = 1 << 4, // OWNER
+        Demote           = 1 << 5, // OWNER
+        ViewDeletedUsers = 1 << 6, // OWNER / ADMIN
     }
 }
 
 bitmask! {
     pub mask BasePermissions: u32 where flags BasePermission {
-        View = 0x1,
-        Edit = 0x2,
-        Delete = 0x4,
-        ManageTables = 0x8,
-        ManageViews = 0x10,
-        ManageUsers = 0x20,
-    }
+        View         = 1 << 0, // OWNER / ADMIN / USER (base owner)
+        Edit         = 1 << 1, // OWNER / ADMIN / USER ...
+        Delete       = 1 << 2, // OWNER / ADMIN / USER ...
+        ManageTables = 1 << 3, // OWNER / ADMIN / USER ...
+        ManageViews  = 1 << 4, // OWNER / ADMIN / USER ...
+        ManageUsers  = 1 << 5, // OWNER / ADMIN / USER ...
+    } // ↑↑ in a base we only manage user permissions
 }
 
 bitmask! {
     pub mask TablePermissions: u32 where flags TablePermission {
-        CreateRecords = 0x1,
-        EditRecords = 0x2,
-        DeleteRecords = 0x4,
-        ViewRecords = 0x8,
-        CreateFields = 0x10,
-        EditFields = 0x20,
-        DeleteFields = 0x40,
-        ViewFields = 0x80,
-        CreateViews = 0x100,
-        EditViews = 0x200,
-        DeleteViews = 0x400,
-        ViewViews = 0x800,
-        Archive = 0x1000,
-        Edit = 0x2000,
-        Delete = 0x4000,
-        View = 0x8000,
-        BulkImport = 0x10000,
-        LockSchema = 0x20000,
-        ExportTable = 0x40000,
+        CreateRecords = 1 << 0, // ADMIN / OWNER / USER
+        EditRecords   = 1 << 1, // ADMIN / OWNER / USER
+        DeleteRecords = 1 << 2, // ADMIN / OWNER / USER
+        ViewRecords   = 1 << 3, // ADMIN / OWNER / USER
+        CreateFields  = 1 << 4, // ADMIN / OWNER / USER
+        EditFields    = 1 << 5, // ADMIN / OWNER / USER
+        DeleteFields  = 1 << 6, // ADMIN / OWNER / USER
+        ViewFields    = 1 << 7, // ADMIN / OWNER / USER
+        CreateViews   = 1 << 8, // ADMIN / OWNER / USER
+        EditViews     = 1 << 9, // ADMIN / OWNER / USER
+        DeleteViews   = 1 << 10, // ADMIN / OWNER / USER
+        ViewViews     = 1 << 11, // ADMIN / OWNER / USER
+        Archive       = 1 << 12, // ADMIN / OWNER / USER
+        Edit          = 1 << 13, // ADMIN / OWNER / USER
+        Delete        = 1 << 14, // ADMIN / OWNER / USER
+        View          = 1 << 15, // ADMIN / OWNER / USER
+        BulkImport    = 1 << 16, // ADMIN / OWNER / USER
+        LockSchema    = 1 << 17, // ADMIN / OWNER / USER
+        ExportTable   = 1 << 18, // ADMIN / OWNER / USER
     }
 }
 
 bitmask! {
     pub mask FieldPermissions: u32 where flags FieldPermission {
-        View = 0x1,
-        Edit = 0x2,
-        Delete = 0x4,
-        AddFormula = 0x8,
-        HideFromSearch = 0x10,
+        View           = 1 << 0, // ADMIN / OWNER / USER
+        Edit           = 1 << 1, // ADMIN / OWNER / USER
+        Delete         = 1 << 2, // ADMIN / OWNER / USER
+        Comment        = 1 << 3, // ADMIN / OWNER / USER
     }
 }
 
 bitmask! {
     pub mask RecordPermissions: u32 where flags RecordPermission {
-        View = 0x1,
-        Edit = 0x2,
-        Delete = 0x4,
-        Comment = 0x8,
-        Share = 0x10,
+        View    = 1 << 0, // ADMIN / OWNER / USER
+        Edit    = 1 << 1, // ADMIN / OWNER / USER
+        Delete  = 1 << 2, // ADMIN / OWNER / USER
+        Comment = 1 << 3, // ADMIN / OWNER / USER
+        Share   = 1 << 4, // ADMIN / OWNER / USER
     }
 }
-
 bitmask_serde!(WorkspacePermissions);
 bitmask_serde!(WorkspaceUsersPermissions);
 bitmask_serde!(BasePermissions);

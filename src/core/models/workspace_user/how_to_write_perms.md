@@ -78,3 +78,10 @@ This document serves as the source of truth for the nested bitmask permission sy
 ## 📝 Notes & Reminders
 > **Note:** Use `u32` for TablePermissions to accommodate the large number of bits (Bulk, Lock, Export, etc.). 
 > **Warning:** Avoid manual Hex math! Use bit-shifting (`1 << 4`) in the macro to prevent overlapping bits like `0x16`.
+
+
+alr so two days passed, i was working on underterm, and now i decided to work on this again, i got NO CLUE what i did so im going to rethink so tmr ill work on this
+so i realised that if a workspace is too big, then well have to make a big request, so instead, well do *Recursive inheritance*
+or uh, nah, too much complex ;-;
+
+so uh, instead we'll do role based + list perm based, so basically (reads geekforgeeks post abt graph database) so yeah we're going to use graph,  and uh, ofc we're using surrealdb wich is a plus :3 , but now i gotta sleep bc my mind is blown 3: (omg i hate this)
