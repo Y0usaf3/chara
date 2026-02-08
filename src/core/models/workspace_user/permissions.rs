@@ -3,6 +3,18 @@ use std::collections::HashMap;
 use crate::{bitmask_serde, core::models::ids::*};
 use ::serde::{Deserialize, Serialize};
 
+// alr folks, im going to rewrite this
+// * do nothing *
+// well, i think we ACTUALLY have to rewrite this
+// * plays penumbra phantasm in the bg for epicness *
+// yeah no ill actually just write my ideas here * penumbra phantasm still playing *
+
+// 5min pass
+
+// alr so uh, instead that each thing have its own permission, what we'll do is that we have a
+// role, but its diff in each base or table, (got self confused abt graphs uh, lemme read this
+// again)
+
 #[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct UserPermissions {
     pub workspace: WorkspacePermissions,

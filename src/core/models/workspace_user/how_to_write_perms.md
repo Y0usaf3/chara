@@ -85,3 +85,22 @@ so i realised that if a workspace is too big, then well have to make a big reque
 or uh, nah, too much complex ;-;
 
 so uh, instead we'll do role based + list perm based, so basically (reads geekforgeeks post abt graph database) so yeah we're going to use graph,  and uh, ofc we're using surrealdb wich is a plus :3 , but now i gotta sleep bc my mind is blown 3: (omg i hate this)
+
+so yeah uh lemme rethink , i think graphs are better but bruh i have to redesign so many stuff
+
+so surreal db helps a lot, nodes are tables and edges can be tables too , BUT LIKE, WHY TF AM I COMPLICATING THINGS BRUH
+at the end ill stick with relational wtf am i doing with my life
+
+uhhhhhh, soooo
+
+Workspace -> Base -> Table -> Field <--------| 
+    |                     |-> Record > H < F id, V >  
+    |-> WorkspaceUser -mask-> Workspace 
+                      -mask-> Base 
+                      -mask-> Table
+
+e.g: mask : 00000001
+                   ↓
+                   View 
+
+we use graph, and bc surrealdb got a very clean way to do it, the service layer gotta handle most of the connection part, and we gotta be able to know ifworkspace user got a connection with the bigger parents, like, if we wanna interact with Table, we have to check they got relation to the parent Base or parent Workspace 

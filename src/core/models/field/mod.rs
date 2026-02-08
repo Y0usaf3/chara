@@ -20,6 +20,8 @@ pub struct Field {
     pub is_nullable: bool,
     pub is_unique: bool,
     pub name: Name,
+    pub order: u32,
+    pub table: TableId,
     pub description: Option<String>,
 }
 
@@ -29,6 +31,8 @@ pub struct InsertField {
     pub(crate) is_primary: bool,
     pub(crate) is_nullable: bool,
     pub(crate) is_unique: bool,
+    pub(crate) order: u32,
+    pub(crate) table: TableId,
     pub(crate) config: FieldConfig,
 }
 
@@ -38,6 +42,7 @@ pub struct FieldPatch {
     pub(crate) is_primary: Option<bool>,
     pub(crate) is_nullable: Option<bool>,
     pub(crate) is_unique: Option<bool>,
+    pub(crate) order: Option<u32>,
     pub(crate) config: Option<FieldConfig>,
 }
 
@@ -53,7 +58,9 @@ impl Field {
             is_nullable: insert.is_nullable,
             is_unique: insert.is_unique,
             name: insert.name,
+            order: insert.order,
             description: insert.description,
+            table: insert.table,
         }
     }
     pub fn apply_patch(&mut self, patch: FieldPatch) {
@@ -83,6 +90,9 @@ impl Field {
         };
         if let Some(v) = patch.description {
             self.description = Some(v);
+        }
+        if let Some(v) = patch.order {
+            self.order = v;
         }
     }
 }
