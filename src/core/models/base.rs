@@ -14,7 +14,6 @@ pub struct Base {
     pub created_at: Datetime,
     pub updated_at: Datetime,
     pub is_deleted: bool,
-    pub workspace: WorkspaceId,
     pub name: Name,
 }
 
@@ -37,7 +36,6 @@ impl Base {
             created_at: Datetime::from(chrono::Utc::now()),
             updated_at: Datetime::from(chrono::Utc::now()),
             is_deleted: false,
-            workspace: insert.workspace,
             name: insert.name,
         }
     }

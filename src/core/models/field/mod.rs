@@ -21,7 +21,6 @@ pub struct Field {
     pub is_unique: bool,
     pub name: Name,
     pub order: u32,
-    pub table: TableId,
     pub description: Option<String>,
 }
 
@@ -32,7 +31,6 @@ pub struct InsertField {
     pub(crate) is_nullable: bool,
     pub(crate) is_unique: bool,
     pub(crate) order: u32,
-    pub(crate) table: TableId,
     pub(crate) config: FieldConfig,
 }
 
@@ -60,7 +58,6 @@ impl Field {
             name: insert.name,
             order: insert.order,
             description: insert.description,
-            table: insert.table,
         }
     }
     pub fn apply_patch(&mut self, patch: FieldPatch) {

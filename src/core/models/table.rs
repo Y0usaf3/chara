@@ -14,13 +14,11 @@ pub struct Table {
     pub created_at: Datetime,
     pub updated_at: Datetime,
     pub is_deleted: bool,
-    pub base: BaseId,
     pub name: Name,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct InsertTable {
-    pub(crate) base: BaseId,
     pub(crate) name: Name,
 }
 
@@ -37,7 +35,6 @@ impl Table {
             created_at: Datetime::from(chrono::Utc::now()),
             updated_at: Datetime::from(chrono::Utc::now()),
             is_deleted: false,
-            base: insert.base,
             name: insert.name,
         }
     }

@@ -1,10 +1,8 @@
-use crate::core::models::{ids::*, workspace_user::permissions::UserPermissions};
+use crate::core::models::ids::*;
 use ::serde::{Deserialize, Serialize};
 use surrealdb::sql::Datetime;
 
-mod perm_methods;
 mod permissions;
-mod presets;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -21,12 +19,10 @@ pub struct WorkspaceUser {
     pub created_at: Datetime,
     pub updated_at: Datetime,
     pub is_deleted: bool,
-    pub user_id: UserId,
     pub workspace_id: WorkspaceId,
     pub username: Option<String>,
     pub invited_by: WorkspaceUserId,
     pub role: WorkspaceUserRole,
-    pub permissions: Option<UserPermissions>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -42,7 +38,6 @@ pub struct InsertWorkspaceUser {
 pub struct WorkspaceUserPatch {
     pub username: Option<String>,
     pub role: Option<WorkspaceUserRole>,
-    pub permissions: Option<UserPermissions>,
 }
 
 impl WorkspaceUser {
@@ -52,12 +47,10 @@ impl WorkspaceUser {
             created_at: Datetime::from(chrono::Utc::now()),
             updated_at: Datetime::from(chrono::Utc::now()),
             is_deleted: false,
-            user_id: insert.user_id,
             workspace_id: insert.workspace_id,
             username: insert.username,
             invited_by: insert.invited_by,
             role: insert.role.unwrap_or(WorkspaceUserRole::Guest),
-            permissions: None,
         }
     }
 

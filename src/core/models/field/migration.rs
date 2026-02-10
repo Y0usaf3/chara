@@ -71,7 +71,7 @@ impl FieldConfig {
             }
 
             // 4. NUMBER LOGIC
-            (FieldConfig::Number(old), FieldConfig::Number(new)) =>
+            (FieldConfig::Number(_old), FieldConfig::Number(_new)) =>
             // will work on this soon tm
             {
                 MigrationStrategy::Safe

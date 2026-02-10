@@ -101,6 +101,19 @@ Workspace -> Base -> Table -> Field <--------|
 
 e.g: mask : 00000001
                    ↓
-                   View 
+                   Admin 
 
 we use graph, and bc surrealdb got a very clean way to do it, the service layer gotta handle most of the connection part, and we gotta be able to know ifworkspace user got a connection with the bigger parents, like, if we wanna interact with Table, we have to check they got relation to the parent Base or parent Workspace 
+oh and actually ill make the first bit the admin bit so we just return true or false easly
+ill do ts shit tmr
+well, i just had the best gift ever and now idk what to give to her ;-; 
+2 days passed after i wrote this :sob:
+
+alr, so now we have to know the permissions we need to know 
+so first, the _ADMIN_ bit, so we know if the user is admin at the first place 
+then, if we can _VIEW_ the item 
+then if we can _EDIT_ the item 
+then if we can _DELETE_ the item 
+the other 4 bits are custom depending on the type, if its a workspace user or a workspace, the other bits will differ
+that mean i have to change the permissions
+

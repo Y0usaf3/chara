@@ -14,13 +14,11 @@ pub struct Record {
     updated_at: Datetime,
     is_deleted: bool,
     cells: HashMap<FieldId, CellValue>,
-    table: TableId,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct InsertRecord {
     pub(crate) cells: HashMap<FieldId, CellValue>,
-    pub(crate) table: TableId,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -36,7 +34,6 @@ impl Record {
             updated_at: Datetime::from(chrono::Utc::now()),
             is_deleted: false,
             cells: insert.cells,
-            table: insert.table,
         }
     }
     pub fn apply_patch(&mut self, patch: RecordPatch) {

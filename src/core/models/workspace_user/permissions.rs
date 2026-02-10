@@ -15,112 +15,119 @@ use ::serde::{Deserialize, Serialize};
 // role, but its diff in each base or table, (got self confused abt graphs uh, lemme read this
 // again)
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct UserPermissions {
-    pub workspace: WorkspacePermissions,
-    pub workspace_users: HashMap<WorkspaceUserId, WorkspaceUsersPermissions>,
-    pub bases: HashMap<BaseId, BaseSubPermissions>,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct BaseSubPermissions {
-    pub base: BasePermissions,
-    pub tables: HashMap<TableId, TableSubPermissions>,
-}
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
-pub struct TableSubPermissions {
-    pub table: TablePermissions,
-    pub fields: HashMap<FieldId, FieldPermissions>,
-    pub records: HashMap<RecordId, RecordPermissions>,
-}
-
 // so for permissions we will need
 // can() user do stuff,
 // change permissions,
 // and presets, like, for new users what they can do, or just for guests what they can do etc
 // (we give the workspace role)
 
-bitmask! {
-    pub mask WorkspacePermissions: u32 where flags WorkspacePermission {
-        Edit               = 1 << 0, // OWNER / ADMIN (limited)
-        Delete             = 1 << 1, // OWNER
-        ManageRoles        = 1 << 2, // OWNER / ADMIN
-        ManageUsers        = 1 << 3, // OWNER / ADMIN
-        ExportData         = 1 << 4, // OWNER / ADMIN / USER
-        ManageIntegrations = 1 << 5, // OWNER / ADMIN
-        ViewAuditLogs      = 1 << 6, // OWNER / ADMIN
-    }
+// ok so instead we'll make each permissions as a relation , and bc surreal db store them as
+// tables, we'll need to know how the table will be
+
+// btw welcome to my macro insanity lol
+
+#[macro_export]
+macro_rules! relation {
+    ( $( $x:ident ,$y:ident), * ) => {
+        #[derive(Deserialize, Serialize, PartialEq, Eq)]
+        $(pub struct $x {
+            pub perm: $y,
+        })*
+    };
 }
 
 bitmask! {
-    pub mask WorkspaceUsersPermissions: u32 where flags WorkspaceUsersPermission {
-        Invite           = 1 << 0, // OWNER / ADMIN / USER
-        Desactivate      = 1 << 1, // OWNER / ADMIN
-        Activate         = 1 << 2, // OWNER / ADMIN
-        Ban              = 1 << 3, // OWNER / ADMIN
-        Promote          = 1 << 4, // OWNER
-        Demote           = 1 << 5, // OWNER
-        ViewDeletedUsers = 1 << 6, // OWNER / ADMIN
-    }
-}
+    pub mask WorkspacePermissions: u8 where flags WorkspacePermission {
+        Admin = 1 << 0,
+        View = 1 << 1,
+        Edit = 1 << 2,
+        Delete = 1 << 3,
 
-bitmask! {
-    pub mask BasePermissions: u32 where flags BasePermission {
-        View         = 1 << 0, // OWNER / ADMIN / USER (base owner)
-        Edit         = 1 << 1, // OWNER / ADMIN / USER ...
-        Delete       = 1 << 2, // OWNER / ADMIN / USER ...
-        ManageTables = 1 << 3, // OWNER / ADMIN / USER ...
-        ManageViews  = 1 << 4, // OWNER / ADMIN / USER ...
-        ManageUsers  = 1 << 5, // OWNER / ADMIN / USER ...
-    } // ↑↑ in a base we only manage user permissions
-}
-
-bitmask! {
-    pub mask TablePermissions: u32 where flags TablePermission {
-        CreateRecords = 1 << 0, // ADMIN / OWNER / USER
-        EditRecords   = 1 << 1, // ADMIN / OWNER / USER
-        DeleteRecords = 1 << 2, // ADMIN / OWNER / USER
-        ViewRecords   = 1 << 3, // ADMIN / OWNER / USER
-        CreateFields  = 1 << 4, // ADMIN / OWNER / USER
-        EditFields    = 1 << 5, // ADMIN / OWNER / USER
-        DeleteFields  = 1 << 6, // ADMIN / OWNER / USER
-        ViewFields    = 1 << 7, // ADMIN / OWNER / USER
-        CreateViews   = 1 << 8, // ADMIN / OWNER / USER
-        EditViews     = 1 << 9, // ADMIN / OWNER / USER
-        DeleteViews   = 1 << 10, // ADMIN / OWNER / USER
-        ViewViews     = 1 << 11, // ADMIN / OWNER / USER
-        Archive       = 1 << 12, // ADMIN / OWNER / USER
-        Edit          = 1 << 13, // ADMIN / OWNER / USER
-        Delete        = 1 << 14, // ADMIN / OWNER / USER
-        View          = 1 << 15, // ADMIN / OWNER / USER
-        BulkImport    = 1 << 16, // ADMIN / OWNER / USER
-        LockSchema    = 1 << 17, // ADMIN / OWNER / USER
-        ExportTable   = 1 << 18, // ADMIN / OWNER / USER
-    }
-}
-
-bitmask! {
-    pub mask FieldPermissions: u32 where flags FieldPermission {
-        View           = 1 << 0, // ADMIN / OWNER / USER
-        Edit           = 1 << 1, // ADMIN / OWNER / USER
-        Delete         = 1 << 2, // ADMIN / OWNER / USER
-        Comment        = 1 << 3, // ADMIN / OWNER / USER
-    }
-}
-
-bitmask! {
-    pub mask RecordPermissions: u32 where flags RecordPermission {
-        View    = 1 << 0, // ADMIN / OWNER / USER
-        Edit    = 1 << 1, // ADMIN / OWNER / USER
-        Delete  = 1 << 2, // ADMIN / OWNER / USER
-        Comment = 1 << 3, // ADMIN / OWNER / USER
-        Share   = 1 << 4, // ADMIN / OWNER / USER
+        ManageBases = 1 << 4,
+        ManageTables = 1 << 5,
+        ManageUsers = 1 << 6,
+        ManageGlobalAutomatisations = 1 << 7
     }
 }
 bitmask_serde!(WorkspacePermissions);
-bitmask_serde!(WorkspaceUsersPermissions);
+relation!(WorkspaceRelation, WorkspacePermissions);
+
+bitmask! {
+    pub mask WorkspaceUserPermissions: u8 where flags WorkspaceUserPermission {
+        Admin = 1 << 0,
+        View = 1 << 1,
+        Edit = 1 << 2,
+        Delete = 1 << 3,
+
+        ActivateDesactivate = 1 << 4,
+        PromoteDemote = 1 << 5,
+        ViewDeletedUser = 1 << 6,
+        Invite = 1 << 7
+    }
+}
+bitmask_serde!(WorkspaceUserPermissions);
+relation!(WorkspaceUserRelation, WorkspaceUserPermissions);
+
+bitmask! {
+    pub mask BasePermissions: u8 where flags BasePermission {
+        Admin = 1 << 0,
+        View = 1 << 1,
+        Edit = 1 << 2,
+        Delete = 1 << 3,
+
+        ManageTables = 1 << 4,
+        ManageViews = 1 << 5,
+        ManagerUserPermissions = 1 << 6,
+        ManageAutomatisations = 1 << 7
+    }
+}
 bitmask_serde!(BasePermissions);
+relation!(BaseRelation, BasePermissions);
+
+bitmask! {
+    pub mask TablePermissions: u8 where flags TablePermission {
+        Admin = 1 << 0,
+        View = 1 << 1,
+        Edit = 1 << 2,
+        Delete = 1 << 3,
+
+        BulkImport = 1 << 4,
+        LockFields = 1 << 5,
+        Export = 1 << 6,
+        Archive = 1 << 7
+    }
+}
 bitmask_serde!(TablePermissions);
+relation!(TableRelation, TablePermissions);
+
+bitmask! {
+    pub mask FieldPermissions: u8 where flags FieldPermission {
+        Admin = 1 << 0,
+        View = 1 << 1,
+        Edit = 1 << 2,
+        Delete = 1 << 3,
+
+        Comment = 1 << 4,
+        Lock = 1 << 5,
+        // XXXXXX = 1 << 6,
+        // XXXXXX = 1 << 7
+    }
+}
 bitmask_serde!(FieldPermissions);
+relation!(FieldRelation, FieldPermissions);
+
+bitmask! {
+    pub mask RecordPermissions: u8 where flags RecordPermission {
+        Admin = 1 << 0,
+        View = 1 << 1,
+        Edit = 1 << 2,
+        Delete = 1 << 3,
+
+        Comment = 1 << 4,
+        Lock = 1 << 5,
+        // XXXXXX = 1 << 6,
+        // XXXXXX = 1 << 7
+    }
+}
 bitmask_serde!(RecordPermissions);
+relation!(RecordRelation, RecordPermissions);
