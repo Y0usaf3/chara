@@ -12,12 +12,11 @@
 // sooooooooooooooooooooooooooooooon:sob:
 
 use crate::core::db::{error::Error, DB};
-use crate::core::models::identity::Identity;
 use crate::core::models::user::*;
 use crate::HCAUTH;
 use thiserror::Error;
 
-pub struct Session {
+pub struct SessionI {
     pub token: String,
     pub ip: String,
     pub agent: String,
@@ -25,7 +24,7 @@ pub struct Session {
 
 pub enum AuthMethod {
     HCA(String),
-    Session(Session),
+    Session(SessionI),
 }
 
 #[derive(Error, Debug)]
@@ -42,13 +41,14 @@ pub enum UserServiceError {
     BrokenToken,
 }
 
-struct UserService {
+#[derive(Debug)]
+pub struct UserService {
     pub user: User,
 }
 
 impl UserService {
     pub async fn login(method: AuthMethod) -> Result<Self, Error> {
-        let ident: Option<Identity> = match method {
+        let ident: Option<crate::core::models::session::Session> = match method {
             AuthMethod::HCA(token) => {
                 let auth_identity = HCAUTH
                     .get_identity(token)
@@ -64,9 +64,9 @@ impl UserService {
             }
             AuthMethod::Session(session) => {
                 let mut res = DB
-                    .query("SELECT * FROM session WHERE ip = $ip AND token = $token AND user_agent = $user_agent AND expires_at > time::now()")
+                    .query("SELECT * FROM session WHERE ip = $ip AND `token` = $tokenn AND user_agent = $user_agent AND expires_at > time::now()")
                     .bind(("ip",session.ip))
-                    .bind(("token", session.token))
+                    .bind(("tokenn", session.token))
                     .bind(("user_agent",session.agent))
                     .await?;
                 res.take(0)?

@@ -58,7 +58,7 @@ pub struct User {
     pub first_name: Name,
     pub last_name: Name,
     pub email: String,
-    pub role: UserRole,
+    pub role: String,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -85,7 +85,8 @@ impl User {
             first_name: insert.first_name,
             last_name: insert.last_name,
             email: insert.email.to_string(),
-            role: UserRole::User,
+            role: String::new(),
+            //UserRole::User,
         }
     }
 

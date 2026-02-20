@@ -27,9 +27,9 @@ DEFAULT 'user'
 ASSERT $value INSIDE ['admin', 'user'];
 
 -- SESSION 
-DEFINE TABLE OVERWRITE session SCHEMAFULL
-PERMISSIONS 
-    FOR select, update, delete NONE;
+DEFINE TABLE OVERWRITE session SCHEMAFULL;
+-- PERMISSIONS 
+--     FOR select, update, delete NONE;
 DEFINE FIELD OVERWRITE token ON TABLE session TYPE string;
 DEFINE FIELD OVERWRITE ip ON TABLE session TYPE string
 ASSERT string::is_ip($value);
