@@ -17,7 +17,7 @@ pub enum NameError {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, SurrealValue)]
-pub struct Name(String);
+pub struct Name(pub String);
 // a name must be :
 // - ascii only
 // - alphabetic only

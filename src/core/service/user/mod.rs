@@ -14,6 +14,8 @@
 use crate::core::db::{error::Error, DB};
 use crate::core::models::user::*;
 use crate::HCAUTH;
+use surrealdb::opt::PatchOp;
+use surrealdb_types::RecordId;
 use thiserror::Error;
 
 pub struct SessionI {
@@ -80,7 +82,68 @@ impl UserService {
         })
     }
 
-    pub async fn register() {}
-    pub async fn update_name(&self) {}
-    pub async fn delete_user(&self) {}
+    pub async fn register(token: String) -> Result<UserService, Error> {
+        let auth_identity = HCAUTH
+            .get_identity(token.clone())
+            .await
+            .map_err(|_| Error::User(UserServiceError::BrokenToken))?;
+        let mut res = DB
+            .query(
+                "
+        LET $existing = (SELECT id FROM identity WHERE external_id = $ext_id LIMIT 1);
+        IF $existing[0].id = NONE THEN {
+            LET $u = (CREATE user CONTENT {
+                first_name: $first_name,
+                last_name: $last_name,
+                email: $email
+            });
+            CREATE identity CONTENT {
+                user: $u[0].id,
+                external_id: $ext_id,
+                access_token: $access_token
+            };
+        };
+    ",
+            )
+            .bind(("ext_id", auth_identity.identity.id))
+            .bind(("first_name", auth_identity.identity.first_name))
+            .bind(("last_name", auth_identity.identity.last_name))
+            .bind(("email", auth_identity.identity.primary_email))
+            .bind(("access_token", token))
+            .await?;
+        let user: Option<User> = res.take(0)?;
+
+        Ok(UserService {
+            user: user.ok_or(Error::User(UserServiceError::UserAlreadyExists))?,
+        })
+    }
+
+    pub async fn update_self_user(&mut self, mut patch: UserPatch) -> Result<User, Error> {
+        if patch.is_deleted == Some(true) {
+            patch.is_deleted = Some(false);
+        }
+
+        self.user.apply_patch(patch);
+
+        let record_id = self
+            .user
+            .id
+            .as_ref()
+            .map(|id| id.0.clone())
+            .ok_or(Error::User(UserServiceError::UserNonExistant))?;
+
+        let user: Option<User> = DB
+            .update(&record_id)
+            .patch(PatchOp::replace(
+                "/first_name",
+                self.user.first_name.clone(),
+            ))
+            .patch(PatchOp::replace("/last_name", self.user.last_name.clone()))
+            .patch(PatchOp::replace("/email", self.user.email.clone()))
+            .await?;
+
+        user.ok_or(Error::User(UserServiceError::UserNonExistant))
+    }
+
+    //pub async fn delete_user(&self) {}
 }

@@ -6,6 +6,7 @@
 
 mod core;
 use crate::core::db::DB;
+use crate::core::models::user::UserPatch;
 use crate::core::service::user::{SessionI, UserService};
 use hackclub_auth_api::HCAuth;
 use std::sync::LazyLock;
@@ -45,7 +46,18 @@ async fn main() -> surrealdb::Result<()> {
     .await;
 
     match smt {
-        Ok(v) => println!("{v:?}"),
+        Ok(mut v) => {
+            let patch = UserPatch {
+                first_name: Some(core::models::user::Name("Yoid".to_string())),
+                last_name: Some(core::models::user::Name("Maidman".to_string())),
+                is_deleted: None,
+            };
+            println!("{v:#?}");
+            println!("——————————————————————— Apllying patch :3 ———————————————————");
+            println!("{patch:#?}");
+            v.update_self_user(patch).await.unwrap();
+            println!("{v:#?}")
+        }
         Err(e) => eprintln!("{e:?}"),
     }
 
