@@ -20,6 +20,7 @@ use crate::core::models::ids::UserId;
 use crate::core::models::session::Session;
 use crate::core::models::user::*;
 use surrealdb::opt::PatchOp;
+use surrealdb_types::RecordId;
 use thiserror::Error;
 
 pub struct SessionI {
@@ -50,6 +51,7 @@ pub enum UserServiceError {
 #[derive(Debug)]
 pub struct UserService {
     pub user: User,
+    pub user_record_id: RecordId,
 }
 
 impl UserService {
@@ -83,8 +85,16 @@ impl UserService {
             }
         };
 
+        let user = user.ok_or(Error::User(UserServiceError::UserNonExistant))?;
+
         Ok(UserService {
-            user: user.ok_or(Error::User(UserServiceError::UserNonExistant))?,
+            user: user.clone(),
+            user_record_id: user
+                .id
+                .as_ref()
+                .ok_or(Error::User(UserServiceError::UserNonExistant))?
+                .0
+                .clone(),
         })
     }
 
@@ -118,9 +128,16 @@ impl UserService {
             .bind(("access_token", token))
             .await?;
         let user: Option<User> = res.take(0)?;
+        let user = user.ok_or(Error::User(UserServiceError::UserAlreadyExists))?;
 
         Ok(UserService {
-            user: user.ok_or(Error::User(UserServiceError::UserAlreadyExists))?,
+            user: user.clone(),
+            user_record_id: user
+                .id
+                .as_ref()
+                .ok_or(Error::User(UserServiceError::UserNonExistant))?
+                .0
+                .clone(),
         })
     }
 
@@ -132,16 +149,8 @@ impl UserService {
 
         self.user.apply_patch(patch);
 
-        let record_id = self
-            .user
-            .id
-            .as_ref()
-            .ok_or(Error::User(UserServiceError::UserNonExistant))?
-            .0
-            .clone();
-
         let user: Option<User> = DB
-            .update(&record_id)
+            .update(&self.user_record_id)
             .patch(PatchOp::replace(
                 "/first_name",
                 self.user.first_name.clone(),
@@ -157,9 +166,8 @@ impl UserService {
         if self.is_admin().await.unwrap_or(false) {
             return Err(Error::User(UserServiceError::NotEnoughPermission));
         };
-        let record_id = user_id.0.clone();
         let user: Option<User> = DB
-            .update(&record_id)
+            .update(&user_id.0)
             .patch(PatchOp::replace("/is_deleted", true))
             .await?;
 
@@ -167,32 +175,16 @@ impl UserService {
     }
 
     pub async fn refresh_user(&mut self) -> Result<User, Error> {
-        let user: Option<User> = DB
-            .select(
-                self.user
-                    .id
-                    .as_ref()
-                    .ok_or(Error::User(UserServiceError::UserNonExistant))?
-                    .0
-                    .clone(),
-            )
-            .await?;
+        let user: Option<User> = DB.select(&self.user_record_id).await?;
         let user = user.ok_or(Error::User(UserServiceError::UserNonExistant))?;
         self.user = user.clone();
         Ok(user)
     }
 
     pub async fn is_admin(&self) -> Result<bool, Error> {
-        let record_id = self
-            .user
-            .id
-            .as_ref()
-            .ok_or(Error::User(UserServiceError::UserNonExistant))?
-            .0
-            .clone();
         let mut res = DB
             .query("SELECT (role = 'admin') AS value FROM user WHERE id = $user;")
-            .bind(("user", record_id))
+            .bind(("user", self.user_record_id.clone()))
             .await?;
         let value: Option<IsAdmin> = res.take(0)?;
         Ok(value.unwrap_or_default().value())
