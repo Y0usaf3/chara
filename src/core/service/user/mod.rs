@@ -13,12 +13,12 @@
 
 // make a function to get record id insteado f having to rerun this shit a million time
 
-use crate::HCAUTH;
-use crate::core::db::{DB, error::Error};
+use crate::core::db::{error::Error, DB};
 use crate::core::models::identity::Identity;
 use crate::core::models::ids::UserId;
 use crate::core::models::session::Session;
 use crate::core::models::user::*;
+use crate::HCAUTH;
 use surrealdb::opt::PatchOp;
 use surrealdb_types::RecordId;
 use thiserror::Error;
@@ -141,12 +141,7 @@ impl UserService {
         })
     }
 
-    pub async fn update_self_user(&mut self, mut patch: UserPatch) -> Result<User, Error> {
-        if patch.is_deleted == Some(true) {
-            // a user cant delet itself
-            patch.is_deleted = Some(false);
-        }
-
+    pub async fn update_self_user(&mut self, patch: UserPatch) -> Result<User, Error> {
         self.user.apply_patch(patch);
 
         let user: Option<User> = DB
@@ -156,14 +151,13 @@ impl UserService {
                 self.user.first_name.clone(),
             ))
             .patch(PatchOp::replace("/last_name", self.user.last_name.clone()))
-            .patch(PatchOp::replace("/email", self.user.email.clone()))
             .await?;
 
         user.ok_or(Error::User(UserServiceError::UserNonExistant))
     }
 
     pub async fn delete_user(&mut self, user_id: &UserId) -> Result<User, Error> {
-        if self.is_admin().await.unwrap_or(false) {
+        if !self.is_admin().await.unwrap_or(false) {
             return Err(Error::User(UserServiceError::NotEnoughPermission));
         };
         let user: Option<User> = DB
@@ -189,6 +183,4 @@ impl UserService {
         let value: Option<IsAdmin> = res.take(0)?;
         Ok(value.unwrap_or_default().value())
     }
-
-    //pub async fn delete_user(&self) {}
 }
