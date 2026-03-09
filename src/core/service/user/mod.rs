@@ -13,7 +13,8 @@
 
 // make a function to get record id insteado f having to rerun this shit a million time
 
-use crate::core::db::{error::Error, DB};
+use crate::HCAUTH;
+use crate::core::db::{DB, error::Error};
 use crate::core::models::identity::Identity;
 use crate::core::models::ids::UserId;
 use crate::core::models::session::Session;
@@ -21,7 +22,6 @@ use crate::core::models::user::*;
 use crate::core::models::workspace::Workspace;
 use crate::core::models::workspace_user::permissions::WorkspacePermission;
 use crate::core::models::workspace_user::permissions::WorkspacePermissions;
-use crate::HCAUTH;
 use surrealdb::opt::PatchOp;
 use surrealdb_types::RecordId;
 use thiserror::Error;
@@ -58,6 +58,10 @@ pub struct UserService {
 }
 
 impl UserService {
+    pub fn id(&self) -> &RecordId {
+        &self.user_record_id
+    }
+
     pub async fn login(method: AuthMethod) -> Result<Self, Error> {
         let user: Option<User> = match method {
             AuthMethod::HCA(token) => {
@@ -67,24 +71,30 @@ impl UserService {
                     .map_err(|_| Error::User(UserServiceError::BrokenToken))?;
 
                 let mut res = DB
-                    .query("SELECT * FROM identity WHERE external_id = $external_id")
+                    .query("SELECT * FROM identity WHERE external_id = $external_id AND is_deleted = false")
                     .bind(("external_id", auth_identity.identity.id))
                     .await?;
 
                 let ident: Option<Identity> = res.take(0)?;
                 let ident = ident.ok_or(Error::User(UserServiceError::UserNonExistant))?;
-                DB.select(ident.user.0).await?
+                DB.query("SELECT * FROM user WHERE id = $id AND is_deleted = false")
+                    .bind(("id", ident.user.0))
+                    .await?
+                    .take(0)?
             }
             AuthMethod::Session(session) => {
                 let mut res = DB
-                    .query("SELECT * FROM session WHERE ip = $ip AND `token` = $tokenn AND user_agent = $user_agent AND expires_at > time::now()")
+                    .query("SELECT * FROM session WHERE ip = $ip AND `token` = crypto::sha256($tokenn) AND user_agent = $user_agent AND expires_at > time::now()")
                     .bind(("ip",session.ip))
                     .bind(("tokenn", session.token))
                     .bind(("user_agent",session.agent))
                     .await?;
                 let ident: Option<Session> = res.take(0)?;
                 let ident = ident.ok_or(Error::User(UserServiceError::UserNonExistant))?;
-                DB.select(ident.user.0).await?
+                DB.query("SELECT * FROM user WHERE id = $id AND is_deleted = false")
+                    .bind(("id", ident.user.0))
+                    .await?
+                    .take(0)?
             }
         };
 
@@ -109,19 +119,25 @@ impl UserService {
         let mut res = DB
             .query(
                 "
-                LET $existing = (SELECT id FROM identity WHERE external_id = $ext_id LIMIT 1);
-                IF $existing[0].id = NONE THEN {
-                    LET $u = (CREATE user CONTENT {
-                        first_name: $first_name,
-                        last_name: $last_name,
-                        email: $email
-                    });
-                    CREATE identity CONTENT {
-                        user: $u[0].id,
-                        external_id: $ext_id,
-                        access_token: $access_token
-                    };
-                };
+BEGIN TRANSACTION;
+LET $existing = (SELECT id FROM identity WHERE external_id = $ext_id LIMIT 1);
+IF $existing[0].id = NONE THEN {
+    LET $u = (CREATE user CONTENT {
+        first_name: $first_name,
+        last_name: $last_name,
+        email: $email
+    });
+    CREATE identity CONTENT {
+        user: $u[0].id,
+        external_id: $ext_id,
+        access_token: $access_token
+    };
+    -- ADD THIS LINE:
+    RETURN $u[0]; 
+} ELSE {
+    RETURN NONE;
+};
+COMMIT TRANSACTION;
             ",
             )
             .bind(("ext_id", auth_identity.identity.id))
@@ -172,7 +188,11 @@ impl UserService {
     }
 
     pub async fn refresh_user(&mut self) -> Result<User, Error> {
-        let user: Option<User> = DB.select(&self.user_record_id).await?;
+        let user: Option<User> = DB
+            .query("SELECT * FROM user WHERE id = $id AND is_deleted = false")
+            .bind(("id", self.user_record_id.clone()))
+            .await?
+            .take(0)?;
         let user = user.ok_or(Error::User(UserServiceError::UserNonExistant))?;
         self.user = user.clone();
         Ok(user)
@@ -214,7 +234,6 @@ impl UserService {
 
                 COMMIT TRANSACTION;
 
-                -- return the created workspace
                 SELECT * FROM $ws[0].id;
             ",
             )
@@ -227,4 +246,47 @@ impl UserService {
         let workspace: Option<Workspace> = res.take(0)?;
         workspace.ok_or(Error::User(UserServiceError::BrokenToken))
     }
+
+    pub async fn delete_workspace(&self, workspace_id: RecordId) -> Result<(), Error> {
+        let mut res = DB
+            .query(
+                "
+            BEGIN TRANSACTION;
+
+            -- soft delete the workspace 
+            LET $ws = (
+                UPDATE workspace 
+                SET is_deleted = true, updated_at = time::now()
+                WHERE id = $workspace_id AND (owner = $user_id OR $is_admin = true)
+                RETURN id
+            );
+
+            -- soft delete each workspace user 
+            IF $ws[0].id {
+                UPDATE workspace_user 
+                SET is_deleted = true, updated_at = time::now()
+                WHERE workspace_id = $workspace_id;
+            };
+
+            COMMIT TRANSACTION;
+
+            SELECT VALUE id FROM $ws[0];
+            ",
+            )
+            .bind(("workspace_id", workspace_id))
+            .bind(("user_id", self.user_record_id.clone()))
+            .bind(("is_admin", self.is_admin().await.unwrap_or(false)))
+            .await?;
+
+        let deleted_id: Option<RecordId> = res.take(0)?;
+
+        if deleted_id.is_none() {
+            return Err(Error::User(UserServiceError::NotEnoughPermission));
+        }
+
+        Ok(())
+    }
 }
+
+// ok, i gotta learn how argon2 works again, dam i forgot how it works its been like, 6months or
+// smt ? huh

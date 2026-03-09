@@ -30,16 +30,18 @@ ASSERT $value INSIDE ['admin', 'user'];
 DEFINE TABLE OVERWRITE session SCHEMAFULL;
 -- PERMISSIONS 
 --     FOR select, update, delete NONE;
-DEFINE FIELD OVERWRITE token ON TABLE session TYPE string;
+DEFINE FIELD OVERWRITE token ON TABLE session TYPE string
+    VALUE crypto::sha256($value);
 DEFINE FIELD OVERWRITE ip ON TABLE session TYPE string
-ASSERT string::is_ip($value);
+    ASSERT string::is_ip($value);
 DEFINE FIELD OVERWRITE user_agent ON TABLE session TYPE string;
 DEFINE FIELD OVERWRITE created_at ON TABLE session TYPE datetime
 VALUE time::now() READONLY;
 DEFINE FIELD OVERWRITE expires_at ON TABLE session TYPE datetime
-VALUE time::now() + 5d READONLY;
+VALUE time::now() + 2d READONLY;
 DEFINE FIELD OVERWRITE user ON TABLE session TYPE record<user>;
-DEFINE INDEX OVERWRITE user_unique ON TABLE session FIELDS user UNIQUE;
+DEFINE INDEX OVERWRITE unique ON TABLE session 
+    FIELDS user, token, user_agent UNIQUE;
 
 -- IDENTITY 
 DEFINE TABLE OVERWRITE identity SCHEMAFULL
