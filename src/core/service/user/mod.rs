@@ -235,7 +235,8 @@ COMMIT TRANSACTION;
 
     // make it return a user service instead
     pub async fn create_workspace(&self, name: String) -> Result<Workspace, Error> {
-        let admin_perm = WorkspacePermissions::none().set(WorkspacePermission::Admin);
+        let mut admin_perm: WorkspacePermissions = WorkspacePermissions::none();
+        admin_perm.set(WorkspacePermission::Admin);
 
         let mut res = DB
             .query(
@@ -255,7 +256,7 @@ COMMIT TRANSACTION;
                 });
 
                 -- create the permission relation (the graph edge)
-                RELATE $ws_user[0].id->can_access_workspace->$ws[0].id 
+                RELATE $ws_user->can_access_workspace->$ws 
                 SET perms = $admin_perm;
 
                 COMMIT TRANSACTION;
@@ -266,10 +267,13 @@ COMMIT TRANSACTION;
             .bind(("name", name))
             .bind(("user_id", self.user_record_id.clone()))
             .bind(("first_name", self.user.first_name.clone()))
-            .bind(("admin_perm", admin_perm))
+            .bind((
+                "admin_perm",
+                <WorkspacePermissions as Into<i32>>::into(admin_perm),
+            ))
             .await?;
 
-        let workspace: Option<Workspace> = res.take(0)?;
+        let workspace: Option<Workspace> = res.take(5)?;
         workspace.ok_or(Error::User(UserServiceError::BrokenToken))
     }
 
@@ -304,7 +308,7 @@ COMMIT TRANSACTION;
             .bind(("is_admin", self.is_admin().await.unwrap_or(false)))
             .await?;
 
-        let deleted_id: Option<RecordId> = res.take(0)?;
+        let deleted_id: Option<RecordId> = res.take(4)?;
 
         if deleted_id.is_none() {
             return Err(Error::User(UserServiceError::NotEnoughPermission));

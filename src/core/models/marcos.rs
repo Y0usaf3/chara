@@ -1,3 +1,6 @@
+use surrealdb::types::Number;
+use surrealdb::types::Value;
+
 #[macro_export]
 macro_rules! bitmask_serde {
     ($ty:ident) => {
@@ -6,7 +9,7 @@ macro_rules! bitmask_serde {
             where
                 S: serde::Serializer,
             {
-                serializer.serialize_u16(self.mask)
+                serializer.serialize_i32(self.mask)
             }
         }
         impl<'de> serde::Deserialize<'de> for $ty {
@@ -14,13 +17,25 @@ macro_rules! bitmask_serde {
             where
                 D: serde::Deserializer<'de>,
             {
-                let mask = u16::deserialize(deserializer)?;
+                let mask = i32::deserialize(deserializer)?;
                 Ok($ty { mask })
             }
         }
-        impl From<u16> for $ty {
-            fn from(mask: u16) -> Self {
+        impl From<$ty> for ::surrealdb::types::Value {
+            fn from(val: $ty) -> Self {
+                ::surrealdb::types::Value::Number(::surrealdb::types::Number::from(val.mask))
+            }
+        }
+
+        impl From<i32> for $ty {
+            fn from(mask: i32) -> Self {
                 $ty { mask }
+            }
+        }
+
+        impl From<$ty> for i32 {
+            fn from(val: $ty) -> i32 {
+                val.mask
             }
         }
     };

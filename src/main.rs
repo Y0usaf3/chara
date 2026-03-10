@@ -4,6 +4,9 @@
 
 #![allow(unexpected_cfgs)]
 
+#[cfg(test)]
+mod test;
+
 mod core;
 use crate::core::db::DB;
 use crate::core::service::user::{SessionI, UserService};

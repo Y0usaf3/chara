@@ -26,6 +26,8 @@ use ::serde::{Deserialize, Serialize};
 
 // just realised how much insanity i put in this single file
 
+use surrealdb_types::SurrealValue;
+
 #[macro_export]
 macro_rules! relation {
     ( $( $x:ident ,$y:ident), * ) => {
@@ -37,7 +39,7 @@ macro_rules! relation {
 }
 
 bitmask! {
-    pub mask WorkspacePermissions: u16 where flags WorkspacePermission {
+    pub mask WorkspacePermissions: i32 where flags WorkspacePermission {
         Admin = 1 << 0,
         View = 1 << 1,
         Edit = 1 << 2,
@@ -53,7 +55,7 @@ bitmask_serde!(WorkspacePermissions);
 relation!(CanAccessWorkspace, WorkspacePermissions);
 
 bitmask! {
-    pub mask WorkspaceUserPermissions: u16 where flags WorkspaceUserPermission {
+    pub mask WorkspaceUserPermissions: i32 where flags WorkspaceUserPermission {
         Admin = 1 << 0,
         View = 1 << 1,
         Edit = 1 << 2,
@@ -69,7 +71,7 @@ bitmask_serde!(WorkspaceUserPermissions);
 relation!(CanAccessWorkspaceUser, WorkspaceUserPermissions);
 
 bitmask! {
-    pub mask BasePermissions: u16 where flags BasePermission {
+    pub mask BasePermissions: i32 where flags BasePermission {
         Admin = 1 << 0,
         View = 1 << 1,
         Edit = 1 << 2,
@@ -85,7 +87,7 @@ bitmask_serde!(BasePermissions);
 relation!(CanAccessBase, BasePermissions);
 
 bitmask! {
-    pub mask TablePermissions: u16 where flags TablePermission {
+    pub mask TablePermissions: i32 where flags TablePermission {
         Admin = 1 << 0,
         View = 1 << 1,
         Edit = 1 << 2,
@@ -101,7 +103,7 @@ bitmask_serde!(TablePermissions);
 relation!(CanAccessTable, TablePermissions);
 
 bitmask! {
-    pub mask FieldPermissions: u16 where flags FieldPermission {
+    pub mask FieldPermissions: i32 where flags FieldPermission {
         Admin = 1 << 0,
         View = 1 << 1,
         Edit = 1 << 2,

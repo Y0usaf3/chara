@@ -4,7 +4,7 @@ use chrono::Duration;
 use surrealdb::types::Datetime;
 use surrealdb_types::SurrealValue;
 
-#[derive(Deserialize, Serialize, SurrealValue)]
+#[derive(Deserialize, Serialize, SurrealValue, Debug)]
 pub struct Session {
     pub id: Option<SessionId>,
     pub user: UserId,
