@@ -54,6 +54,8 @@ pub enum UserServiceError {
     NotEnoughPermission,
     #[error("broken")]
     BrokenToken,
+    #[error("encryption error")]
+    EncryptionError,
 }
 
 #[derive(Debug)]
@@ -89,10 +91,16 @@ impl UserService {
             }
             AuthMethod::Session(session) => {
                 let mut res = DB
-                    .query("SELECT * FROM session WHERE ip = $ip AND crypto::argon2::compare(`token`, $tokenn)  AND user_agent = $user_agent AND expires_at > time::now()")
-                    .bind(("ip",session.ip))
+                    .query(
+                        "SELECT * FROM session 
+                        WHERE ip = $ip 
+                        AND crypto::argon2::compare(`token`, $tokenn)  
+                        AND user_agent = $user_agent 
+                        AND expires_at > time::now()",
+                    )
+                    .bind(("ip", session.ip))
                     .bind(("tokenn", session.token))
-                    .bind(("user_agent",session.agent))
+                    .bind(("user_agent", session.agent))
                     .await?;
                 let ident: Option<Session> = res.take(0)?;
                 let ident = ident.ok_or(Error::User(UserServiceError::UserNonExistant))?;
@@ -123,13 +131,17 @@ impl UserService {
             .map_err(|_| Error::User(UserServiceError::BrokenToken))?;
         let cipher = ChaCha20Poly1305::new(MASTER_KEY.as_bytes().into());
         let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
-        let token_encrypted = cipher.encrypt(&nonce, token.as_ref()).unwrap();
+        let token_encrypted = cipher
+            .encrypt(&nonce, token.as_ref())
+            .map_err(|_| Error::User(UserServiceError::EncryptionError))?;
         let token_frfr = nonce.to_vec().extend(token_encrypted);
+
         // thats how we get the nonce
         //let (nonce_bytes, ciphertext) = stored.split_at(12);
         //let nonce = Nonce::from_slice(nonce_bytes);
         //let plaintext = cipher.decrypt(nonce, ciphertext)?;
         //the token contains the nonce and the token encrypted
+
         let mut res = DB
             .query(
                 "

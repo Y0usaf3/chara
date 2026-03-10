@@ -33,7 +33,7 @@ impl Session {
             ip: insert.ip,
             user_agent: insert.user_agent,
             created_at: Datetime::from(chrono::Utc::now()),
-            expires_at: Datetime::from(chrono::Utc::now() + Duration::days(3)), // hardened expiration :p
+            expires_at: Datetime::from(chrono::Utc::now() + Duration::days(2)), // hardened expiration :p
             user: insert.user,
         }
     }

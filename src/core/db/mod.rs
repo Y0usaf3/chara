@@ -10,6 +10,7 @@ pub mod error {
     use axum::response::IntoResponse;
     use axum::response::Response;
     use axum::Json;
+    use chacha20poly1305::Error as EncryptionErr;
     use thiserror::Error;
 
     #[derive(Error, Debug)]
@@ -29,8 +30,15 @@ pub mod error {
 
     impl From<surrealdb::Error> for Error {
         fn from(error: surrealdb::Error) -> Self {
-            eprintln!("{error}");
+            eprintln!("{error:?}");
             Self::Db
+        }
+    }
+
+    impl From<EncryptionErr> for Error {
+        fn from(error: EncryptionErr) -> Self {
+            eprintln!("{error:?}");
+            Self::User(UserServiceError::EncryptionError)
         }
     }
 }

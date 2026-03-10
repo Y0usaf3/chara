@@ -39,9 +39,10 @@ async fn main() -> surrealdb::Result<()> {
     .await?;
 
     DB.use_ns("main").use_db("main").await?;
+
     let smt = UserService::login(core::service::user::AuthMethod::Session(SessionI {
-        ip: "192.168.11.109".to_string(),
-        agent: "maow".to_string(),
+        ip: "192.168.11.100".to_string(),
+        agent: "owo".to_string(),
         token: "IIOOII".to_string(),
     }))
     .await;
