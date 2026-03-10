@@ -31,7 +31,7 @@ DEFINE TABLE OVERWRITE session SCHEMAFULL;
 -- PERMISSIONS 
 --     FOR select, update, delete NONE;
 DEFINE FIELD OVERWRITE token ON TABLE session TYPE string
-    VALUE crypto::sha256($value);
+    VALUE  crypto::argon2::generate($value);
 DEFINE FIELD OVERWRITE ip ON TABLE session TYPE string
     ASSERT string::is_ip($value);
 DEFINE FIELD OVERWRITE user_agent ON TABLE session TYPE string;

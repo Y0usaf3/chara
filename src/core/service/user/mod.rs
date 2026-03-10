@@ -13,7 +13,8 @@
 
 // make a function to get record id insteado f having to rerun this shit a million time
 
-use crate::core::db::{error::Error, DB};
+use crate::HCAUTH;
+use crate::core::db::{DB, error::Error};
 use crate::core::models::identity::Identity;
 use crate::core::models::ids::UserId;
 use crate::core::models::session::Session;
@@ -21,7 +22,6 @@ use crate::core::models::user::*;
 use crate::core::models::workspace::Workspace;
 use crate::core::models::workspace_user::permissions::WorkspacePermission;
 use crate::core::models::workspace_user::permissions::WorkspacePermissions;
-use crate::HCAUTH;
 use surrealdb::opt::PatchOp;
 use surrealdb_types::RecordId;
 use thiserror::Error;
@@ -84,7 +84,7 @@ impl UserService {
             }
             AuthMethod::Session(session) => {
                 let mut res = DB
-                    .query("SELECT * FROM session WHERE ip = $ip AND `token` = crypto::sha256($tokenn) AND user_agent = $user_agent AND expires_at > time::now()")
+                    .query("SELECT * FROM session WHERE ip = $ip AND crypto::argon2::compare(`token`, $tokenn)  AND user_agent = $user_agent AND expires_at > time::now()")
                     .bind(("ip",session.ip))
                     .bind(("tokenn", session.token))
                     .bind(("user_agent",session.agent))
@@ -291,3 +291,5 @@ COMMIT TRANSACTION;
 // ok, i gotta learn how argon2 works again, dam i forgot how it works its been like, 6months or
 // smt ? huh
 // ok it makes sense hehe
+// ok so uh, it was ez to impl argon2 hehe, not that hard, now ima add encryption for tokens for
+// identity, especially  access and refresh tokens
