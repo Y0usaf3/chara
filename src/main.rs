@@ -6,14 +6,11 @@
 
 mod core;
 use crate::core::db::DB;
-use crate::core::models::ids::UserId;
-use crate::core::models::user::UserPatch;
 use crate::core::service::user::{SessionI, UserService};
 use hackclub_auth_api::HCAuth;
 use std::sync::LazyLock;
 use surrealdb::engine::remote::ws::Ws;
 use surrealdb::opt::auth::Root;
-use surrealdb_types::RecordId;
 
 pub static HCAUTH: LazyLock<HCAuth> = LazyLock::new(|| {
     HCAuth::new(
@@ -22,6 +19,8 @@ pub static HCAUTH: LazyLock<HCAuth> = LazyLock::new(|| {
         dotenv!("REDIRECT_URI"),
     )
 });
+
+pub static MASTER_KEY: &str = dotenv!("MASTER_KEY");
 
 #[macro_use]
 extern crate bitmask;

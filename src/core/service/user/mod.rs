@@ -13,8 +13,12 @@
 
 // make a function to get record id insteado f having to rerun this shit a million time
 
-use crate::HCAUTH;
-use crate::core::db::{DB, error::Error};
+use chacha20poly1305::{
+    aead::{Aead, AeadCore, KeyInit, OsRng},
+    ChaCha20Poly1305, Nonce,
+};
+
+use crate::core::db::{error::Error, DB};
 use crate::core::models::identity::Identity;
 use crate::core::models::ids::UserId;
 use crate::core::models::session::Session;
@@ -22,6 +26,7 @@ use crate::core::models::user::*;
 use crate::core::models::workspace::Workspace;
 use crate::core::models::workspace_user::permissions::WorkspacePermission;
 use crate::core::models::workspace_user::permissions::WorkspacePermissions;
+use crate::{HCAUTH, MASTER_KEY};
 use surrealdb::opt::PatchOp;
 use surrealdb_types::RecordId;
 use thiserror::Error;
@@ -116,6 +121,15 @@ impl UserService {
             .get_identity(token.clone())
             .await
             .map_err(|_| Error::User(UserServiceError::BrokenToken))?;
+        let cipher = ChaCha20Poly1305::new(MASTER_KEY.as_bytes().into());
+        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
+        let token_encrypted = cipher.encrypt(&nonce, token.as_ref()).unwrap();
+        let token_frfr = nonce.to_vec().extend(token_encrypted);
+        // thats how we get the nonce
+        //let (nonce_bytes, ciphertext) = stored.split_at(12);
+        //let nonce = Nonce::from_slice(nonce_bytes);
+        //let plaintext = cipher.decrypt(nonce, ciphertext)?;
+        //the token contains the nonce and the token encrypted
         let mut res = DB
             .query(
                 "
@@ -144,7 +158,7 @@ COMMIT TRANSACTION;
             .bind(("first_name", auth_identity.identity.first_name))
             .bind(("last_name", auth_identity.identity.last_name))
             .bind(("email", auth_identity.identity.primary_email))
-            .bind(("access_token", token))
+            .bind(("access_token", token_frfr))
             .await?;
         let user: Option<User> = res.take(0)?;
         let user = user.ok_or(Error::User(UserServiceError::UserAlreadyExists))?;
@@ -293,3 +307,7 @@ COMMIT TRANSACTION;
 // ok it makes sense hehe
 // ok so uh, it was ez to impl argon2 hehe, not that hard, now ima add encryption for tokens for
 // identity, especially  access and refresh tokens
+// ima use AES , so chacha20poly1305 ig (wth is that name)
+//
+// alr alr, so i have to impl AES correctly, store the nonce in the correct way etc, ill do it when
+// i have time
