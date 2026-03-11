@@ -5,7 +5,7 @@ use surrealdb::Surreal;
 pub static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
 pub mod error {
-    use crate::core::service::user::UserServiceError;
+    use crate::core::service::errors::*;
     use axum::http::StatusCode;
     use axum::response::IntoResponse;
     use axum::response::Response;
@@ -15,11 +15,26 @@ pub mod error {
 
     #[derive(Error, Debug)]
     pub enum Error {
-        #[error("database error")]
-        Db,
+        #[error("database error: {0}")]
+        Db(String),
 
-        #[error("user service error: {0}")]
-        User(#[from] UserServiceError),
+        #[error("authentication error: {0}")]
+        Auth(#[from] AuthError),
+
+        #[error("user error: {0}")]
+        User(#[from] UserError),
+
+        #[error("permission error: {0}")]
+        Permission(#[from] PermissionError),
+
+        #[error("workspace error: {0}")]
+        Workspace(#[from] WorkspaceError),
+
+        #[error("encryption error: {0}")]
+        Encryption(#[from] EncryptionError),
+
+        #[error("database error: {0}")]
+        Database(#[from] DatabaseError),
     }
 
     impl IntoResponse for Error {
@@ -31,14 +46,14 @@ pub mod error {
     impl From<surrealdb::Error> for Error {
         fn from(error: surrealdb::Error) -> Self {
             eprintln!("{error:?}");
-            Self::Db
+            Self::Db(error.to_string())
         }
     }
 
     impl From<EncryptionErr> for Error {
         fn from(error: EncryptionErr) -> Self {
             eprintln!("{error:?}");
-            Self::User(UserServiceError::EncryptionError)
+            Self::Encryption(EncryptionError::EncryptionFailed)
         }
     }
 }

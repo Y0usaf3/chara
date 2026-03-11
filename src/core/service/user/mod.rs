@@ -12,24 +12,19 @@
 // sooooooooooooooooooooooooooooooon:sob:
 
 // make a function to get record id insteado f having to rerun this shit a million time
-
-use chacha20poly1305::{
-    aead::{Aead, AeadCore, KeyInit, OsRng},
-    ChaCha20Poly1305, Nonce,
-};
-
-use crate::core::db::{error::Error, DB};
-use crate::core::models::identity::Identity;
+use super::errors::*;
 use crate::core::models::ids::UserId;
-use crate::core::models::session::Session;
 use crate::core::models::user::*;
 use crate::core::models::workspace::Workspace;
 use crate::core::models::workspace_user::permissions::WorkspacePermission;
 use crate::core::models::workspace_user::permissions::WorkspacePermissions;
-use crate::{HCAUTH, MASTER_KEY};
+use crate::core::{
+    db::{error::Error, DB},
+    service::crypter::encrypt_token,
+};
+use crate::HCAUTH;
 use surrealdb::opt::PatchOp;
 use surrealdb_types::RecordId;
-use thiserror::Error;
 
 pub struct SessionI {
     pub token: String,
@@ -42,105 +37,74 @@ pub enum AuthMethod {
     Session(SessionI),
 }
 
-#[derive(Error, Debug)]
-pub enum UserServiceError {
-    #[error("the user already exists")]
-    UserAlreadyExists,
-    #[error("the session token doesnt exist")]
-    SessionTokenNonExistant,
-    #[error("the user doesnt exist")]
-    UserNonExistant,
-    #[error("the user dont have enough permission")]
-    NotEnoughPermission,
-    #[error("broken")]
-    BrokenToken,
-    #[error("encryption error")]
-    EncryptionError,
-}
-
 #[derive(Debug)]
 pub struct UserService {
     pub user: User,
-    pub user_record_id: RecordId,
+    pub user_record_id: UserId,
 }
 
 impl UserService {
-    pub fn id(&self) -> &RecordId {
+    pub fn id(&self) -> &UserId {
         &self.user_record_id
     }
 
     pub async fn login(method: AuthMethod) -> Result<Self, Error> {
-        let user: Option<User> = match method {
+        let user: User = match method {
             AuthMethod::HCA(token) => {
                 let auth_identity = HCAUTH
                     .get_identity(token)
                     .await
-                    .map_err(|_| Error::User(UserServiceError::BrokenToken))?;
+                    .map_err(|_| Error::Auth(AuthError::InvalidToken))?;
 
                 let mut res = DB
-                    .query("SELECT * FROM identity WHERE external_id = $external_id AND is_deleted = false")
+                    .query("SELECT VALUE user.* FROM identity WHERE external_id = $external_id AND is_deleted = false")
                     .bind(("external_id", auth_identity.identity.id))
                     .await?;
 
-                let ident: Option<Identity> = res.take(0)?;
-                let ident = ident.ok_or(Error::User(UserServiceError::UserNonExistant))?;
-                DB.query("SELECT * FROM user WHERE id = $id AND is_deleted = false")
-                    .bind(("id", ident.user.0))
-                    .await?
-                    .take(0)?
+                let ident: Option<User> = res.take(0)?;
+                ident.ok_or(Error::Auth(AuthError::VerificationFailed))?
             }
             AuthMethod::Session(session) => {
                 let mut res = DB
                     .query(
-                        "SELECT * FROM session 
+                        "SELECT VALUE user.* FROM session 
                         WHERE ip = $ip 
                         AND crypto::argon2::compare(`token`, $tokenn)  
                         AND user_agent = $user_agent 
-                        AND expires_at > time::now()",
+                        AND expires_at > time::now()
+                        AND user.is_deleted = false",
                     )
                     .bind(("ip", session.ip))
                     .bind(("tokenn", session.token))
                     .bind(("user_agent", session.agent))
                     .await?;
-                let ident: Option<Session> = res.take(0)?;
-                let ident = ident.ok_or(Error::User(UserServiceError::UserNonExistant))?;
-                DB.query("SELECT * FROM user WHERE id = $id AND is_deleted = false")
-                    .bind(("id", ident.user.0))
-                    .await?
-                    .take(0)?
+                let ident: Option<User> = res.take(0)?;
+                ident.ok_or(Error::Auth(AuthError::SessionNotFound))?
             }
         };
-
-        let user = user.ok_or(Error::User(UserServiceError::UserNonExistant))?;
+        let record_id = user
+            .id
+            .as_ref()
+            .ok_or(Error::User(UserServiceError::UserNonExistant))?
+            .0
+            .clone();
 
         Ok(UserService {
-            user: user.clone(),
-            user_record_id: user
-                .id
-                .as_ref()
-                .ok_or(Error::User(UserServiceError::UserNonExistant))?
-                .0
-                .clone(),
+            user,
+            user_record_id: UserId(record_id),
         })
     }
 
     pub async fn register(token: String) -> Result<UserService, Error> {
-        let auth_identity = HCAUTH
-            .get_identity(token.clone())
+        let auth_identity = HCAUTH.get_identity(token.clone());
+        let encrypted_token = encrypt_token(&token);
+
+        let auth_identity = auth_identity
             .await
             .map_err(|_| Error::User(UserServiceError::BrokenToken))?;
-        let cipher = ChaCha20Poly1305::new(MASTER_KEY.as_bytes().into());
-        let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
-        let token_encrypted = cipher
-            .encrypt(&nonce, token.as_ref())
-            .map_err(|_| Error::User(UserServiceError::EncryptionError))?;
-        let token_frfr = nonce.to_vec().extend(token_encrypted);
-
-        // thats how we get the nonce
-        //let (nonce_bytes, ciphertext) = stored.split_at(12);
-        //let nonce = Nonce::from_slice(nonce_bytes);
-        //let plaintext = cipher.decrypt(nonce, ciphertext)?;
-        //the token contains the nonce and the token encrypted
+        let encrypted_token = encrypted_token
+            .await
+            .map_err(|_| Error::User(UserServiceError::BrokenToken))?;
 
         let mut res = DB
             .query(
@@ -158,7 +122,6 @@ IF $existing[0].id = NONE THEN {
         external_id: $ext_id,
         access_token: $access_token
     };
-    -- ADD THIS LINE:
     RETURN $u[0]; 
 } ELSE {
     RETURN NONE;
@@ -170,19 +133,21 @@ COMMIT TRANSACTION;
             .bind(("first_name", auth_identity.identity.first_name))
             .bind(("last_name", auth_identity.identity.last_name))
             .bind(("email", auth_identity.identity.primary_email))
-            .bind(("access_token", token_frfr))
+            .bind(("access_token", encrypted_token))
             .await?;
         let user: Option<User> = res.take(0)?;
         let user = user.ok_or(Error::User(UserServiceError::UserAlreadyExists))?;
-
-        Ok(UserService {
-            user: user.clone(),
-            user_record_id: user
-                .id
+        let record_id = UserId(
+            user.id
                 .as_ref()
                 .ok_or(Error::User(UserServiceError::UserNonExistant))?
                 .0
                 .clone(),
+        );
+
+        Ok(UserService {
+            user,
+            user_record_id: record_id,
         })
     }
 
@@ -190,7 +155,7 @@ COMMIT TRANSACTION;
         self.user.apply_patch(patch);
 
         let user: Option<User> = DB
-            .update(&self.user_record_id)
+            .update(&self.user_record_id.0)
             .patch(PatchOp::replace(
                 "/first_name",
                 self.user.first_name.clone(),
@@ -203,6 +168,9 @@ COMMIT TRANSACTION;
 
     pub async fn delete_user(&mut self, user_id: &UserId) -> Result<User, Error> {
         if !self.is_admin().await.unwrap_or(false) {
+            return Err(Error::User(UserServiceError::NotEnoughPermission));
+        };
+        if self.user_record_id == *user_id {
             return Err(Error::User(UserServiceError::NotEnoughPermission));
         };
         let user: Option<User> = DB
@@ -291,13 +259,6 @@ COMMIT TRANSACTION;
                 RETURN id
             );
 
-            -- soft delete each workspace user 
-            IF $ws[0].id {
-                UPDATE workspace_user 
-                SET is_deleted = true, updated_at = time::now()
-                WHERE workspace_id = $workspace_id;
-            };
-
             COMMIT TRANSACTION;
 
             SELECT VALUE id FROM $ws[0];
@@ -308,7 +269,7 @@ COMMIT TRANSACTION;
             .bind(("is_admin", self.is_admin().await.unwrap_or(false)))
             .await?;
 
-        let deleted_id: Option<RecordId> = res.take(4)?;
+        let deleted_id: Option<RecordId> = res.take(3)?;
 
         if deleted_id.is_none() {
             return Err(Error::User(UserServiceError::NotEnoughPermission));

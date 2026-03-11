@@ -14,11 +14,11 @@ macro_rules! bench {
         let duration = start.elapsed();
         match &result {
             Ok(_) => println!(
-                "✅ {:<20} | {:>10.2}ms",
+                " {:<20} | {:>10.2}ms",
                 $name,
                 duration.as_secs_f64() * 1000.0
             ),
-            Err(e) => eprintln!("❌ {:<20} | FAILED ({:?})", $name, e),
+            Err(e) => eprintln!("󰳤 {:<20} | FAILED ({:?})", $name, e),
         }
         result
     }};

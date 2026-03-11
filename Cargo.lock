@@ -521,6 +521,7 @@ dependencies = [
  "dotenv_codegen",
  "email_address",
  "hackclub_auth_api",
+ "hex",
  "iso_currency",
  "mime",
  "mime_serde_shim",
