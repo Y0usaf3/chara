@@ -85,7 +85,7 @@ impl UserService {
         let record_id = user
             .id
             .as_ref()
-            .ok_or(Error::User(UserServiceError::UserNonExistant))?
+            .ok_or(Error::Auth(AuthError::VerificationFailed))?
             .0
             .clone();
 
@@ -101,10 +101,10 @@ impl UserService {
 
         let auth_identity = auth_identity
             .await
-            .map_err(|_| Error::User(UserServiceError::BrokenToken))?;
+            .map_err(|_| Error::Auth(AuthError::VerificationFailed))?;
         let encrypted_token = encrypted_token
             .await
-            .map_err(|_| Error::User(UserServiceError::BrokenToken))?;
+            .map_err(|_| Error::Auth(AuthError::InvalidToken))?;
 
         let mut res = DB
             .query(
@@ -136,11 +136,11 @@ COMMIT TRANSACTION;
             .bind(("access_token", encrypted_token))
             .await?;
         let user: Option<User> = res.take(0)?;
-        let user = user.ok_or(Error::User(UserServiceError::UserAlreadyExists))?;
+        let user = user.ok_or(Error::User(UserError::NotFound))?;
         let record_id = UserId(
             user.id
                 .as_ref()
-                .ok_or(Error::User(UserServiceError::UserNonExistant))?
+                .ok_or(Error::User(UserError::NotFound))?
                 .0
                 .clone(),
         );
@@ -152,7 +152,7 @@ COMMIT TRANSACTION;
     }
 
     pub async fn update_self_user(&mut self, patch: UserPatch) -> Result<User, Error> {
-        self.user.apply_patch(patch);
+        self.user.apply_patch(patch.clone());
 
         let user: Option<User> = DB
             .update(&self.user_record_id.0)
@@ -163,22 +163,39 @@ COMMIT TRANSACTION;
             .patch(PatchOp::replace("/last_name", self.user.last_name.clone()))
             .await?;
 
-        user.ok_or(Error::User(UserServiceError::UserNonExistant))
+        user.ok_or(Error::User(UserError::UpdateFailed(format!("{patch:?}"))))
     }
 
     pub async fn delete_user(&mut self, user_id: &UserId) -> Result<User, Error> {
-        if !self.is_admin().await.unwrap_or(false) {
-            return Err(Error::User(UserServiceError::NotEnoughPermission));
-        };
         if self.user_record_id == *user_id {
-            return Err(Error::User(UserServiceError::NotEnoughPermission));
+            return Err(Error::User(UserError::CannotDeleteSelf));
+        } else if !self.is_admin().await.unwrap_or(false) {
+            return Err(Error::Permission(PermissionError::AdminRequired));
         };
-        let user: Option<User> = DB
-            .update(&user_id.0)
-            .patch(PatchOp::replace("/is_deleted", true))
-            .await?;
 
-        user.ok_or(Error::User(UserServiceError::UserNonExistant))
+        let user: Option<User> = DB
+            .query(
+                "
+LET $is_admin = array::first(
+    SELECT role
+    FROM user
+    WHERE id = $user_id
+    AND role = 'admin'
+    AND is_deleted = false
+);
+IF $is_admin.role != 'admin' THEN
+    THROW 'Not admin'
+END;
+IF $self_id == $user_id THEN THROW 'Cannot delete self' END;
+UPDATE $user_id SET is_deleted = true;
+COMMIT TRANSACTION;",
+            )
+            .bind(("self_id", self.user_record_id.clone()))
+            .bind(("user_id", user_id.0.clone()))
+            .await?
+            .take(5)?;
+
+        user.ok_or(Error::User(UserError::NotFound))
     }
 
     pub async fn refresh_user(&mut self) -> Result<User, Error> {
@@ -187,7 +204,7 @@ COMMIT TRANSACTION;
             .bind(("id", self.user_record_id.clone()))
             .await?
             .take(0)?;
-        let user = user.ok_or(Error::User(UserServiceError::UserNonExistant))?;
+        let user = user.ok_or(Error::User(UserError::Deleted))?;
         self.user = user.clone();
         Ok(user)
     }
@@ -242,7 +259,7 @@ COMMIT TRANSACTION;
             .await?;
 
         let workspace: Option<Workspace> = res.take(5)?;
-        workspace.ok_or(Error::User(UserServiceError::BrokenToken))
+        workspace.ok_or(Error::Workspace(WorkspaceError::NotFound))
     }
 
     pub async fn delete_workspace(&self, workspace_id: RecordId) -> Result<(), Error> {
@@ -272,7 +289,9 @@ COMMIT TRANSACTION;
         let deleted_id: Option<RecordId> = res.take(3)?;
 
         if deleted_id.is_none() {
-            return Err(Error::User(UserServiceError::NotEnoughPermission));
+            return Err(Error::Workspace(WorkspaceError::DeletionFailed(format!(
+                "{deleted_id:?}"
+            ))));
         }
 
         Ok(())
@@ -288,3 +307,10 @@ COMMIT TRANSACTION;
 //
 // alr alr, so i have to impl AES correctly, store the nonce in the correct way etc, ill do it when
 // i have time
+
+// ok so i think there is a new kind of security vulnerability here, what if a session is
+// "compromised", or an attacker found a way to steal the token, we should make a session as
+// occupied so if anything happens, we block any connection bc it already has a connection, wich is
+// i think useful ? but imagine u wanna open the app in a new tab, u cant do that then ...
+// hmmmmmmmmm
+// yeah ill just write it and enable it if we want to (by decommenting)

@@ -41,7 +41,7 @@ async fn test_user_service_lifecycle_ambitious() -> Result<(), Box<dyn std::erro
     println!("{}", "-".repeat(40));
 
     let mut service: UserService = bench!(
-        "Register User",
+        "Login User",
         UserService::login(AuthMethod::Session(SessionI {
             ip: "192.168.11.100".to_string(),
             agent: "owo".to_string(),
@@ -64,7 +64,7 @@ async fn test_user_service_lifecycle_ambitious() -> Result<(), Box<dyn std::erro
     let ws_id = ws.id.unwrap().0;
     bench!("Delete Workspace", service.delete_workspace(ws_id))?;
 
-    let user_id = UserId(service.user_record_id.clone());
+    let user_id = service.user_record_id.clone();
     bench!("Delete User", service.delete_user(&user_id))?;
 
     println!("{}", "-".repeat(40));
