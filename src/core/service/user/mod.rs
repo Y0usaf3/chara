@@ -40,7 +40,7 @@ pub enum AuthMethod {
 #[derive(Debug)]
 pub struct UserService {
     pub user: User,
-    pub user_record_id: UserId,
+    user_record_id: UserId,
 }
 
 impl UserService {

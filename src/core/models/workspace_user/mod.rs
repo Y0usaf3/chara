@@ -13,7 +13,7 @@ pub enum WorkspaceUserRole {
     Owner, // only the owner can change permissions, admin can but cant give admin only permissions
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Debug)]
 pub struct WorkspaceUser {
     pub id: Option<WorkspaceUserId>,
     pub created_at: Datetime,
