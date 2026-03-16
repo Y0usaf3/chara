@@ -15,9 +15,6 @@
 use super::errors::*;
 use crate::core::models::ids::UserId;
 use crate::core::models::user::*;
-use crate::core::models::workspace::Workspace;
-use crate::core::models::workspace_user::permissions::WorkspacePermission;
-use crate::core::models::workspace_user::permissions::WorkspacePermissions;
 use crate::core::{
     db::{error::Error, DB},
     service::crypter::encrypt_token,
@@ -217,85 +214,6 @@ COMMIT TRANSACTION;",
         let value: Option<IsAdmin> = res.take(0)?;
         Ok(value.unwrap_or_default().value())
     }
-
-    // make it return a user service instead
-    pub async fn create_workspace(&self, name: String) -> Result<Workspace, Error> {
-        let mut admin_perm: WorkspacePermissions = WorkspacePermissions::none();
-        admin_perm.set(WorkspacePermission::Admin);
-
-        let mut res = DB
-            .query(
-                "
-                BEGIN TRANSACTION;
-                -- create the workspace
-                LET $ws = (CREATE workspace CONTENT {
-                    name: $name,
-                    owner: $user_id,
-                });
-
-                -- create the workspace_user entry for the owner
-                LET $ws_user = (CREATE workspace_user CONTENT {
-                    workspace_id: $ws[0].id,
-                    user: $user_id,
-                    username: $first_name -- defaulting to user's first name
-                });
-
-                -- create the permission relation (the graph edge)
-                RELATE $ws_user->can_access_workspace->$ws 
-                SET perms = $admin_perm;
-
-                COMMIT TRANSACTION;
-
-                SELECT * FROM $ws[0].id;
-            ",
-            )
-            .bind(("name", name))
-            .bind(("user_id", self.user_record_id.clone()))
-            .bind(("first_name", self.user.first_name.clone()))
-            .bind((
-                "admin_perm",
-                <WorkspacePermissions as Into<i32>>::into(admin_perm),
-            ))
-            .await?;
-
-        let workspace: Option<Workspace> = res.take(5)?;
-        workspace.ok_or(Error::Workspace(WorkspaceError::NotFound))
-    }
-
-    pub async fn delete_workspace(&self, workspace_id: RecordId) -> Result<(), Error> {
-        let mut res = DB
-            .query(
-                "
-            BEGIN TRANSACTION;
-
-            -- soft delete the workspace 
-            LET $ws = (
-                UPDATE workspace 
-                SET is_deleted = true, updated_at = time::now()
-                WHERE id = $workspace_id AND (owner = $user_id OR $is_admin = true)
-                RETURN id
-            );
-
-            COMMIT TRANSACTION;
-
-            SELECT VALUE id FROM $ws[0];
-            ",
-            )
-            .bind(("workspace_id", workspace_id))
-            .bind(("user_id", self.user_record_id.clone()))
-            .bind(("is_admin", self.is_admin().await.unwrap_or(false)))
-            .await?;
-
-        let deleted_id: Option<RecordId> = res.take(3)?;
-
-        if deleted_id.is_none() {
-            return Err(Error::Workspace(WorkspaceError::DeletionFailed(format!(
-                "{deleted_id:?}"
-            ))));
-        }
-
-        Ok(())
-    }
 }
 
 // ok, i gotta learn how argon2 works again, dam i forgot how it works its been like, 6months or
@@ -316,3 +234,7 @@ COMMIT TRANSACTION;",
 // yeah ill just write it and enable it if we want to (by decommenting)
 // guess what im way too lazy if we ever need it then ill write it, now ima impl the workspace user
 // service to interact exclusivly inside a workspace
+//
+// now the user is the one that makes the bases and access the tables, things will be much much
+// easier , now ill have to write a Base Service, it has an owner, and an isolated automatisation
+// runner, i gotta work on this asap

@@ -64,55 +64,6 @@ DEFINE FIELD OVERWRITE refresh_token ON TABLE identity TYPE string;
 DEFINE FIELD OVERWRITE expires_at ON TABLE identity TYPE datetime;
 DEFINE INDEX OVERWRITE user_unique ON TABLE identity FIELDS user UNIQUE;
 DEFINE INDEX OVERWRITE external_id_unique ON TABLE identity FIELDS external_id UNIQUE;
-
--- WORKSPACE 
--- DEFINE TABLE OVERWRITE workspace SCHEMAFULL
--- PERMISSIONS
---   -- Use a custom variable $user instead of $auth
---   FOR select WHERE is_deleted = false AND
---   fn::can(
---       (SELECT VALUE perms FROM can_access_workspace WHERE in.user = $user AND out = $this.id)[0], 
---       2
---   )
---   FOR update WHERE is_deleted = false AND
---   fn::can(
---       (SELECT VALUE perms FROM can_access_workspace WHERE in.user = $user AND out = $this.id)[0], 
---       4
---   );
--- DEFINE FIELD OVERWRITE created_at ON TABLE workspace TYPE datetime 
--- VALUE time::now() READONLY;
--- DEFINE FIELD OVERWRITE updated_at ON TABLE workspace TYPE datetime
--- VALUE time::now();
--- DEFINE FIELD OVERWRITE is_deleted ON TABLE workspace TYPE bool 
--- DEFAULT false; 
--- DEFINE FIELD OVERWRITE owner ON TABLE workspace TYPE record<user>;
--- DEFINE FIELD OVERWRITE name ON TABLE workspace TYPE string;
--- DEFINE INDEX OVERWRITE unique_name_per_owner ON TABLE workspace FIELDS name, owner UNIQUE;
-
--- WORKSPACE USER 
--- DEFINE TABLE OVERWRITE workspace_user SCHEMAFULL
--- PERMISSIONS FOR select, update 
--- WHERE is_deleted = false AND user = $user
--- OR is_deleted = false AND fn::bitwise::and(
---     (SELECT VALUE perm FROM can_access_workspace 
---       WHERE in.user = $user 
---       AND out = $this.workspace_id
---     )[0], 1
--- ) == 1;
--- DEFINE FIELD OVERWRITE created_at ON TABLE workspace_user TYPE datetime 
--- VALUE time::now() READONLY;
--- DEFINE FIELD OVERWRITE updated_at ON TABLE workspace_user TYPE datetime
--- VALUE time::now();
--- DEFINE FIELD OVERWRITE is_deleted ON TABLE workspace_user TYPE bool 
--- DEFAULT false;
--- DEFINE FIELD OVERWRITE workspace_id ON TABLE workspace_user TYPE record<workspace>;
--- DEFINE FIELD OVERWRITE username ON TABLE workspace_user TYPE option<string> 
--- VALUE $value OR user.first_name;
--- DEFINE FIELD OVERWRITE user ON TABLE workspace_user TYPE record<user>;
--- DEFINE INDEX OVERWRITE unique_user_per_workspace 
---     ON TABLE workspace_user 
---     FIELDS user, workspace_id UNIQUE;
-
 -- BASE 
 DEFINE TABLE OVERWRITE base SCHEMAFULL
 PERMISSIONS
@@ -159,23 +110,6 @@ DEFINE FIELD OVERWRITE is_deleted ON TABLE table TYPE bool
 DEFAULT false;
 DEFINE FIELD OVERWRITE name ON TABLE table TYPE string;
 
- -- WORKSPACE |-relation-> BASE 
--- DEFINE TABLE OVERWRITE have_base TYPE RELATION 
---     IN workspace 
---     OUT base 
---     SCHEMAFULL;
--- DEFINE FIELD OVERWRITE created_at ON TABLE have_base TYPE datetime
---     VALUE time::now() READONLY;
--- DEFINE FIELD OVERWRITE is_public ON TABLE have_base TYPE bool;
-
--- BASE |-relation-> TABLE
-DEFINE TABLE OVERWRITE have_table TYPE RELATION 
-    IN base
-    OUT table
-    SCHEMAFULL;
-DEFINE FIELD OVERWRITE created_at ON TABLE have_table TYPE datetime
-    VALUE time::now() READONLY;
-DEFINE FIELD OVERWRITE is_public ON TABLE have_table TYPE bool;
 
 -- FIELD 
 DEFINE TABLE OVERWRITE field SCHEMAFULL
@@ -231,32 +165,15 @@ DEFINE FIELD OVERWRITE cells ON TABLE record TYPE object FLEXIBLE
 ASSERT type::is_object($value);
 DEFINE FIELD OVERWRITE table ON TABLE record TYPE record<table>;
 
--- -- TABLE |-relation-> FIELD
--- DEFINE TABLE OVERWRITE have_field TYPE RELATION 
---     IN table
---     OUT field
---     SCHEMAFULL;
--- DEFINE FIELD OVERWRITE created_at ON TABLE have_field TYPE datetime
---     VALUE time::now() READONLY;
--- DEFINE INDEX OVERWRITE table_fields_idx ON TABLE have_field FIELDS in, out UNIQUE;
+-- BASE |-relation-> TABLE
+DEFINE TABLE OVERWRITE have_table TYPE RELATION 
+    IN base
+    OUT table
+    SCHEMAFULL;
+DEFINE FIELD OVERWRITE created_at ON TABLE have_table TYPE datetime
+    VALUE time::now() READONLY;
+DEFINE FIELD OVERWRITE is_public ON TABLE have_table TYPE bool;
 
--- TABLE |-relation-> RECORD 
--- DEFINE TABLE OVERWRITE have_record TYPE RELATION 
---    IN table
---    OUT record
---    SCHEMAFULL;
--- DEFINE FIELD OVERWRITE created_at ON TABLE have_record TYPE datetime
---    VALUE time::now() READONLY;
-
--- WORKSPACE_USER |-relation-> WORKSPACE
--- DEFINE TABLE OVERWRITE can_access_workspace TYPE RELATION 
---     IN workspace_user 
---     OUT workspace 
---     SCHEMAFULL;
--- DEFINE FIELD OVERWRITE perms ON TABLE can_access_workspace TYPE int;
--- DEFINE INDEX OVERWRITE user_workspace_idx ON TABLE can_access_workspace FIELDS in, out UNIQUE;
--- DEFINE INDEX OVERWRITE workspace_users_reverse_idx ON TABLE can_access_workspace FIELDS out, in UNIQUE; 
--- --     ↑ this just for admin panels when we want to access all the users who have access to the workspace 
 
 -- USER |-relation-> BASE
 DEFINE TABLE OVERWRITE can_access_base TYPE RELATION 

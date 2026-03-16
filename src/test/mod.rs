@@ -71,3 +71,8 @@ async fn test_user_service_lifecycle_ambitious() -> Result<(), Box<dyn std::erro
 
     Ok(())
 }
+
+// so im not sure if we really need this functionallity where we are able to make multiple
+// workspaces, the best idea would be that there is only one workspace that is the default, we will
+// not need to separate users and workspace users, bc they will be the same, and in the overall the
+// security would be much easier to impl, well, tim to work on that hehe
