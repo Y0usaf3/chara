@@ -14,13 +14,14 @@ pub struct Base {
     pub created_at: Datetime,
     pub updated_at: Datetime,
     pub is_deleted: bool,
+    pub owner: UserId,
     pub name: Name,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct InsertBase {
-    pub(crate) workspace: WorkspaceId,
     pub(crate) name: Name,
+    pub(crate) owner: UserId,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
@@ -37,6 +38,7 @@ impl Base {
             updated_at: Datetime::from(chrono::Utc::now()),
             is_deleted: false,
             name: insert.name,
+            owner: insert.owner,
         }
     }
 

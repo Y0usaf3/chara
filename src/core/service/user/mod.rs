@@ -13,7 +13,8 @@
 
 // make a function to get record id insteado f having to rerun this shit a million time
 use super::errors::*;
-use crate::core::models::ids::UserId;
+use crate::core::models::base::{Base, InsertBase};
+use crate::core::models::ids::{BaseId, UserId};
 use crate::core::models::user::*;
 use crate::core::{
     db::{error::Error, DB},
@@ -214,6 +215,49 @@ COMMIT TRANSACTION;",
         let value: Option<IsAdmin> = res.take(0)?;
         Ok(value.unwrap_or_default().value())
     }
+
+    pub async fn create_base(&self, name: String) -> Result<Base, Error> {
+        let base = InsertBase {
+            name: Name(name),
+            owner: self.user_record_id.clone(),
+        };
+        let res: Option<Base> = DB.create("base").content(Base::from_insert(base)).await?;
+        res.ok_or(Error::Database(DatabaseError::QueryFailed(format!(
+            "{}: {}",
+            file!(),
+            line!()
+        ))))
+    }
+
+    pub async fn delete_base(&self, base: BaseId) -> Result<(), Error> {
+        let mut res = DB
+            .query(
+                "
+            BEGIN TRANSACTION;
+            
+            LET $authorized = (
+                SELECT id FROM base WHERE id = $base AND owner = $user
+            ) OR (
+                SELECT id FROM user WHERE id = $user AND role = 'admin'
+            );
+
+            IF count($authorized) == 0 {
+                THROW 'Unauthorized: Only the owner or an admin can delete this base.';
+            };
+
+            DELETE $base;
+            
+            COMMIT TRANSACTION;
+            ",
+            )
+            .bind(("user", self.user_record_id.clone()))
+            .bind(("base", base))
+            .await?;
+        res.check()?;
+        Ok(())
+    }
+
+    //pub async fn update_base(&self, base: BaseId) -> Result<Base, Error> {}
 }
 
 // ok, i gotta learn how argon2 works again, dam i forgot how it works its been like, 6months or
