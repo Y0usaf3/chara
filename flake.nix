@@ -14,6 +14,7 @@
     }:
     let
       pkgs = nixpkgs.legacyPackages."x86_64-linux";
+      naerskLib = pkgs.callPackage naersk { };
     in
     {
       # packages."x86_64-linux".default = pkgs.callPackage ./default.nix { };
