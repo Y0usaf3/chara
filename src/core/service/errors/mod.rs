@@ -61,24 +61,6 @@ pub enum PermissionError {
 }
 
 #[derive(Error, Debug)]
-pub enum WorkspaceError {
-    #[error("Workspace does not exist")]
-    NotFound,
-
-    #[error("Workspace has been deleted")]
-    Deleted,
-
-    #[error("Cannot delete workspace: {0}")]
-    DeletionFailed(String),
-
-    #[error("Workspace name already exists")]
-    NameTaken,
-
-    #[error("Failed to create workspace user relationship")]
-    UserRelationshipFailed,
-}
-
-#[derive(Error, Debug)]
 pub enum EncryptionError {
     #[error("Failed to encrypt data")]
     EncryptionFailed,

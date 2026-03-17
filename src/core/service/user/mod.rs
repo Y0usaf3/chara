@@ -22,7 +22,7 @@ use crate::core::{
 };
 use crate::HCAUTH;
 use surrealdb::opt::PatchOp;
-use surrealdb_types::RecordId;
+use surrealdb::types::RecordId;
 
 pub struct SessionI {
     pub token: String,

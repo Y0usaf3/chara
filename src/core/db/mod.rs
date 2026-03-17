@@ -27,9 +27,6 @@ pub mod error {
         #[error("permission error: {0}")]
         Permission(#[from] PermissionError),
 
-        #[error("workspace error: {0}")]
-        Workspace(#[from] WorkspaceError),
-
         #[error("encryption error: {0}")]
         Encryption(#[from] EncryptionError),
 

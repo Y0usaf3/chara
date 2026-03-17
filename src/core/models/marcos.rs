@@ -1,5 +1,6 @@
-use surrealdb::types::Number;
-use surrealdb::types::Value;
+use surrealdb::types::*;
+
+// TODO: add support for SurrealValue and work on the base service
 
 #[macro_export]
 macro_rules! bitmask_serde {
@@ -12,6 +13,7 @@ macro_rules! bitmask_serde {
                 serializer.serialize_i32(self.mask)
             }
         }
+
         impl<'de> serde::Deserialize<'de> for $ty {
             fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
             where
@@ -19,11 +21,6 @@ macro_rules! bitmask_serde {
             {
                 let mask = i32::deserialize(deserializer)?;
                 Ok($ty { mask })
-            }
-        }
-        impl From<$ty> for ::surrealdb::types::Value {
-            fn from(val: $ty) -> Self {
-                ::surrealdb::types::Value::Number(::surrealdb::types::Number::from(val.mask))
             }
         }
 

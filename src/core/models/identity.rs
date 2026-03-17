@@ -1,7 +1,7 @@
 use crate::core::models::ids::*;
 use ::serde::{Deserialize, Serialize};
 use surrealdb::types::Datetime;
-use surrealdb_types::SurrealValue;
+use surrealdb::types::SurrealValue;
 
 #[derive(SurrealValue)]
 pub struct Identity {

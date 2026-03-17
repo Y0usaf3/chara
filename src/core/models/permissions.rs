@@ -1,5 +1,6 @@
 use crate::bitmask_serde;
 use ::serde::{Deserialize, Serialize};
+use surrealdb::types::SurrealValue;
 
 // alr folks, im going to rewrite this
 // * do nothing *
@@ -26,49 +27,15 @@ use ::serde::{Deserialize, Serialize};
 
 // just realised how much insanity i put in this single file
 
-use surrealdb_types::SurrealValue;
-
 #[macro_export]
 macro_rules! relation {
     ( $( $x:ident ,$y:ident), * ) => {
-        #[derive(Deserialize, Serialize, PartialEq, Eq)]
+        #[derive(Deserialize, Serialize, PartialEq, Eq, SurrealValue)]
         $(pub struct $x {
             pub perm: $y,
         })*
     };
 }
-
-bitmask! {
-    pub mask WorkspacePermissions: i32 where flags WorkspacePermission {
-        Admin = 1 << 0,
-        View = 1 << 1,
-        Edit = 1 << 2,
-        Delete = 1 << 3,
-
-        ManageBases = 1 << 4,
-        ManageTables = 1 << 5,
-        ManageUsers = 1 << 6,
-        ManageGlobalAutomatisations = 1 << 7
-    }
-}
-bitmask_serde!(WorkspacePermissions);
-relation!(CanAccessWorkspace, WorkspacePermissions);
-
-bitmask! {
-    pub mask WorkspaceUserPermissions: i32 where flags WorkspaceUserPermission {
-        Admin = 1 << 0,
-        View = 1 << 1,
-        Edit = 1 << 2,
-        Delete = 1 << 3,
-
-        ActivateDesactivate = 1 << 4,
-        PromoteDemote = 1 << 5,
-        ViewDeletedUser = 1 << 6,
-        Invite = 1 << 7
-    }
-}
-bitmask_serde!(WorkspaceUserPermissions);
-relation!(CanAccessWorkspaceUser, WorkspaceUserPermissions);
 
 bitmask! {
     pub mask BasePermissions: i32 where flags BasePermission {

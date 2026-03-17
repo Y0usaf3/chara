@@ -2,7 +2,7 @@ use crate::core::models::ids::*;
 use ::serde::{Deserialize, Serialize};
 use chrono::Duration;
 use surrealdb::types::Datetime;
-use surrealdb_types::SurrealValue;
+use surrealdb::types::SurrealValue;
 
 #[derive(Deserialize, Serialize, SurrealValue, Debug)]
 pub struct Session {

@@ -59,10 +59,6 @@ async fn test_user_service_lifecycle_ambitious() -> Result<(), Box<dyn std::erro
 
     bench!("Is Admin Check", service.is_admin())?;
 
-    let ws = bench!("Create Workspace", service.create_workspace("Test".into()))?;
-    let ws_id = ws.id.unwrap().0;
-    bench!("Delete Workspace", service.delete_workspace(ws_id))?;
-
     let user_id = service.id().clone();
     bench!("Delete User", service.delete_user(&user_id))?;
 

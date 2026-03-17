@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use surrealdb::types::record_id::RecordId as Thing;
-use surrealdb_types::SurrealValue;
+use surrealdb::types::SurrealValue;
 
 macro_rules! define_ids {
     ($($name:ident),*) => {
@@ -13,19 +13,8 @@ macro_rules! define_ids {
 
 // Now you can define all of them at once:
 define_ids!(
-    WorkspaceId,
-    BaseId,
-    TableId,
-    UserId,
-    CellId,
-    RowId,
-    RecordId,
-    FieldId,
-    RelationId,
-    IdentityId,
-    SessionId,
-    ViewId,
-    WorkspaceUserId
+    BaseId, TableId, UserId, CellId, RowId, RecordId, FieldId, RelationId, IdentityId, SessionId,
+    ViewId
 );
 
 pub trait Key {
