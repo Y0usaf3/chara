@@ -3,7 +3,7 @@ name = "chara"
 version = "0.1.0"
 edition = "2024"
 
-[profile.debug]
+[profile.dev]
 opt-level = 3
 
 [profile.release]
