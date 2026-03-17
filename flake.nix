@@ -15,7 +15,7 @@
         name = "chara";
         src = ./.;
         nativeBuildInputs = [ pkgs.pkg-config ];
-        cargoHash = pkgs.lib.fakeHash;
+        cargoHash = "sha256-YjZEh/uJNYzKI7iUZa/ruF5J0iL8onjr/+bHsNYJx5k=";
         # buildInputs = [ if we ever need smt ];
       };
 
