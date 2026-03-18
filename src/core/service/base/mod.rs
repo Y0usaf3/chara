@@ -6,6 +6,7 @@ use crate::core::{
         permissions::BasePermissions,
         table::Table,
     },
+    service::table::TableService,
 };
 
 #[derive(Debug, Clone)]
