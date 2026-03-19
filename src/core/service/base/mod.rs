@@ -6,7 +6,7 @@ use crate::core::{
         permissions::BasePermissions,
         table::Table,
     },
-    service::table::TableService,
+    service::{errors::*, table::TableService},
 };
 
 #[derive(Debug, Clone)]
@@ -53,9 +53,7 @@ COMMIT TRANSACTION;
             .bind(("base", base_id.clone()))
             .bind(("user", user.clone()))
             .await?;
-        let base: Base = res.take::<Option<Base>>(4)?.ok_or(Error::Database(
-            super::errors::DatabaseError::QueryFailed(format!("{}:{}", file!(), line!())),
-        ))?;
+        let base: Base = res.take::<Option<Base>>(4)?.ok_or(BaseError::NotFound)?;
         Ok(Self {
             base,
             base_record_id: base_id,
@@ -115,9 +113,7 @@ COMMIT TRANSACTION;
     .await?;
 
         let base: Option<Base> = res.take(5)?;
-        let base = base.ok_or(Error::Database(
-            super::errors::DatabaseError::TransactionFailed(format!("{}:{}", file!(), line!())),
-        ))?;
+        let base = base.ok_or(BaseError::DeleteFailed)?;
 
         Ok(base)
     }
@@ -152,9 +148,7 @@ COMMIT TRANSACTION;
         .bind(("name", name))
         .await?;
 
-        let table: Table = res.take::<Option<Table>>(6)?.ok_or(Error::Database(
-            super::errors::DatabaseError::QueryFailed("Failed to create table".into()),
-        ))?;
+        let table: Table = res.take::<Option<Table>>(6)?.ok_or(TableError::CreateFailed)?;
         Ok(table)
     }
 

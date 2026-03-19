@@ -11,6 +11,7 @@ pub mod error {
     use axum::response::Response;
     use axum::Json;
     use chacha20poly1305::Error as EncryptionErr;
+    use serde_json::json;
     use thiserror::Error;
 
     #[derive(Error, Debug)]
@@ -32,11 +33,32 @@ pub mod error {
 
         #[error("database error: {0}")]
         Database(#[from] DatabaseError),
+
+        #[error("base error: {0}")]
+        Base(#[from] BaseError),
+
+        #[error("table error: {0}")]
+        Table(#[from] TableError),
     }
 
     impl IntoResponse for Error {
         fn into_response(self) -> Response {
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(self.to_string())).into_response()
+            let (status, message) = match self {
+                Self::Auth(_) => (StatusCode::UNAUTHORIZED, self.to_string()),
+                Self::Permission(_) => (StatusCode::FORBIDDEN, self.to_string()),
+                Self::User(UserError::NotFound)
+                | Self::Base(BaseError::NotFound)
+                | Self::Table(TableError::NotFound) => (StatusCode::NOT_FOUND, self.to_string()),
+                Self::User(UserError::CannotActionSelf) => (StatusCode::BAD_REQUEST, self.to_string()),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, self.to_string()),
+            };
+
+            let body = Json(json!({
+                "error": message,
+                "status": status.as_u16()
+            }));
+
+            (status, body).into_response()
         }
     }
 

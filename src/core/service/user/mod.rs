@@ -53,7 +53,7 @@ impl UserService {
                 let auth_identity = HCAUTH
                     .get_identity(token)
                     .await
-                    .map_err(|_| Error::Auth(AuthError::InvalidToken))?;
+                    .map_err(|_| AuthError::InvalidToken)?;
 
                 let mut res = DB
                     .query("SELECT VALUE user.* FROM identity WHERE external_id = $external_id AND is_deleted = false")
@@ -61,7 +61,7 @@ impl UserService {
                     .await?;
 
                 let ident: Option<User> = res.take(0)?;
-                ident.ok_or(Error::Auth(AuthError::VerificationFailed))?
+                ident.ok_or(AuthError::VerificationFailed)?
             }
             AuthMethod::Session(session) => {
                 let mut res = DB
@@ -78,13 +78,13 @@ impl UserService {
                     .bind(("user_agent", session.agent))
                     .await?;
                 let ident: Option<User> = res.take(0)?;
-                ident.ok_or(Error::Auth(AuthError::SessionNotFound))?
+                ident.ok_or(AuthError::SessionNotFound)?
             }
         };
         let record_id = user
             .id
             .as_ref()
-            .ok_or(Error::Auth(AuthError::VerificationFailed))?
+            .ok_or(AuthError::VerificationFailed)?
             .0
             .clone();
 
@@ -101,10 +101,10 @@ impl UserService {
 
         let auth_identity = auth_identity
             .await
-            .map_err(|_| Error::Auth(AuthError::VerificationFailed))?;
+            .map_err(|_| AuthError::VerificationFailed)?;
         let encrypted_token = encrypted_token
             .await
-            .map_err(|_| Error::Auth(AuthError::InvalidToken))?;
+            .map_err(|_| AuthError::InvalidToken)?;
 
         let mut res = DB
             .query(
@@ -136,11 +136,11 @@ COMMIT TRANSACTION;
             .bind(("access_token", encrypted_token))
             .await?;
         let user: Option<User> = res.take(0)?;
-        let user = user.ok_or(Error::User(UserError::NotFound))?;
+        let user = user.ok_or(UserError::NotFound)?;
         let record_id = UserId(
             user.id
                 .as_ref()
-                .ok_or(Error::User(UserError::NotFound))?
+                .ok_or(UserError::NotFound)?
                 .0
                 .clone(),
         );
@@ -164,14 +164,14 @@ COMMIT TRANSACTION;
             .patch(PatchOp::replace("/last_name", self.user.last_name.clone()))
             .await?;
 
-        user.ok_or(Error::User(UserError::UpdateFailed(format!("{patch:?}"))))
+        user.ok_or(UserError::UpdateFailed(format!("{patch:?}")).into())
     }
 
     pub async fn delete_user(&mut self, user_id: &UserId) -> Result<User, Error> {
         if self.user_record_id == *user_id {
-            return Err(Error::User(UserError::CannotDeleteSelf));
+            return Err(UserError::CannotActionSelf.into());
         } else if !self.is_admin().await? {
-            return Err(Error::Permission(PermissionError::AdminRequired));
+            return Err(PermissionError::AdminRequired.into());
         };
 
         let user: Option<User> = DB
@@ -189,7 +189,7 @@ COMMIT TRANSACTION;",
             .await?
             .take(4)?;
 
-        user.ok_or(Error::User(UserError::NotFound))
+        user.ok_or(UserError::NotFound.into())
     }
 
     pub async fn refresh_user(&mut self) -> Result<User, Error> {
@@ -198,7 +198,7 @@ COMMIT TRANSACTION;",
             .bind(("id", self.user_record_id.clone()))
             .await?
             .take(0)?;
-        let user = user.ok_or(Error::User(UserError::Deleted))?;
+        let user = user.ok_or(UserError::Deleted)?;
         self.user = user.clone();
         Ok(user)
     }
@@ -218,11 +218,7 @@ COMMIT TRANSACTION;",
             owner: self.user_record_id.clone(),
         };
         let res: Option<Base> = DB.create("base").content(Base::from_insert(base)).await?;
-        res.ok_or(Error::Database(DatabaseError::QueryFailed(format!(
-            "{}: {}",
-            file!(),
-            line!()
-        ))))
+        res.ok_or(BaseError::CreateFailed.into())
     }
 
     pub async fn delete_base(&self, base: BaseId) -> Result<(), Error> {

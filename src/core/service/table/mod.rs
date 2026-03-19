@@ -4,6 +4,7 @@ use crate::core::{
         ids::{BaseId, TableId, UserId},
         table::Table,
     },
+    service::errors::TableError,
 };
 
 #[derive(Debug, Clone)]
@@ -32,9 +33,7 @@ impl TableService {
         .bind(("table_id", tablee.clone()))
         .await?;
 
-        let table: Table = res.take::<Option<Table>>(1)?.ok_or(Error::Database(
-            super::errors::DatabaseError::QueryFailed("Table not found or Access Denied".into()),
-        ))?;
+        let table: Table = res.take::<Option<Table>>(1)?.ok_or(TableError::NotFound)?;
 
         Ok(Self {
             table,

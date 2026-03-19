@@ -5,26 +5,11 @@ pub enum AuthError {
     #[error("Invalid or expired authentication token")]
     InvalidToken,
 
-    #[error("Authentication token has expired")]
-    TokenExpired,
-
     #[error("Failed to verify authentication credentials")]
     VerificationFailed,
 
-    #[error("Broken or malformed authentication response")]
-    BrokenAuthResponse,
-
-    #[error("Session token does not exist")]
+    #[error("Session token does not exist or has expired")]
     SessionNotFound,
-
-    #[error("Session has expired")]
-    SessionExpired,
-
-    #[error("IP address mismatch with session")]
-    IpMismatch,
-
-    #[error("User agent mismatch with session")]
-    UserAgentMismatch,
 }
 
 #[derive(Error, Debug)]
@@ -32,17 +17,14 @@ pub enum UserError {
     #[error("User does not exist")]
     NotFound,
 
-    #[error("User already exists")]
-    AlreadyExists,
-
     #[error("User account has been deleted")]
     Deleted,
 
     #[error("Failed to update user: {0}")]
     UpdateFailed(String),
 
-    #[error("Cannot delete self")]
-    CannotDeleteSelf,
+    #[error("Cannot perform this operation on yourself")]
+    CannotActionSelf,
 }
 
 #[derive(Error, Debug)]
@@ -52,46 +34,49 @@ pub enum PermissionError {
 
     #[error("Admin role required")]
     AdminRequired,
+}
 
-    #[error("Workspace owner permissions required")]
-    OwnerRequired,
+#[derive(Error, Debug)]
+pub enum BaseError {
+    #[error("Base not found or access denied")]
+    NotFound,
 
-    #[error("User lacks permission '{0}' in this workspace")]
-    MissingPermission(String),
+    #[error("Failed to create base")]
+    CreateFailed,
+
+    #[error("Failed to delete base")]
+    DeleteFailed,
+}
+
+#[derive(Error, Debug)]
+pub enum TableError {
+    #[error("Table not found or access denied")]
+    NotFound,
+
+    #[error("Failed to create table")]
+    CreateFailed,
+
+    #[error("Failed to delete table")]
+    DeleteFailed,
 }
 
 #[derive(Error, Debug)]
 pub enum EncryptionError {
-    #[error("Failed to encrypt data")]
+    #[error("Encryption failed")]
     EncryptionFailed,
 
-    #[error("Failed to decrypt data")]
+    #[error("Decryption failed")]
     DecryptionFailed,
 
-    #[error("Invalid encryption key")]
-    InvalidKey,
-
-    #[error("Invalid or missing nonce")]
+    #[error("Invalid nonce")]
     InvalidNonce,
-
-    #[error("Encryption authentication failed - data may be corrupted")]
-    AuthenticationFailed,
 }
 
 #[derive(Error, Debug)]
 pub enum DatabaseError {
-    #[error("Database query failed: {0}")]
+    #[error("Internal database query failed: {0}")]
     QueryFailed(String),
 
-    #[error("Transaction failed: {0}")]
+    #[error("Transaction failed to commit: {0}")]
     TransactionFailed(String),
-
-    #[error("Data serialization/deserialization error")]
-    SerializationError,
-
-    #[error("Invalid record ID")]
-    InvalidRecordId,
-
-    #[error("Duplicate entry in database")]
-    DuplicateEntry,
 }
