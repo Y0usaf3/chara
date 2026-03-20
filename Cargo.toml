@@ -37,3 +37,11 @@ leptos_axum = { version = "0.8.8", default-features = false, features = ["wasm"]
 leptos = { version = "0.8.17", features = ["ssr"] }
 wasm-bindgen = "0.2.114"
 leptos_router = "0.8.12"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[workspace.metadata.leptos]]
+name = "chara"
+bin-package = "chara"
+lib-package = "chara"
