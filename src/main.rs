@@ -9,7 +9,8 @@ mod test;
 
 mod app;
 mod core;
-use crate::core::db;
+use crate::app::ui::App;
+use crate::{app::ui::shell, core::db};
 use axum::{
     http::StatusCode,
     routing::{get, post},
@@ -18,6 +19,10 @@ use axum::{
 use chacha20poly1305::Key;
 use dotenv::dotenv;
 use hackclub_auth_api::HCAuth;
+use leptos::config::LeptosOptions;
+use leptos::prelude::*;
+use leptos_axum::generate_route_list;
+use leptos_axum::LeptosRoutes;
 use std::sync::LazyLock;
 
 pub static HCAUTH: LazyLock<HCAuth> = LazyLock::new(|| {
@@ -53,7 +58,14 @@ extern crate dotenv_codegen;
 #[tokio::main]
 async fn main() {
     db::init().await;
-    let app = Router::new().route("/", get(/*method_router*/));
+    let conf = get_configuration(None).unwrap();
+    let addr = conf.leptos_options.site_addr;
+    let leptos_options = conf.leptos_options;
+    let routes = generate_route_list(App);
+    let app = Router::new().leptos_routes(&leptos_options, routes, {
+        let leptos_options = leptos_options.clone();
+        move || shell(leptos_options.clone())
+    });
     let listener = tokio::net::TcpListener::bind("127.0.0.1:9898")
         .await
         .unwrap();
