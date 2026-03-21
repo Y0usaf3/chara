@@ -1,9 +1,9 @@
 use crate::core::models::user::{Name, UserPatch};
 use crate::core::service::user::{AuthMethod, SessionI, UserService};
-use crate::Root;
-use crate::Ws;
-use crate::DB;
+use crate::core::DB;
 use std::time::Instant;
+use surrealdb::engine::remote::ws::Ws;
+use surrealdb::opt::auth::Root;
 
 /// Helper to measure execution time and print results nicely
 macro_rules! bench {

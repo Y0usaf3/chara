@@ -1,11 +1,12 @@
-use crate::core::models::field::kinds::*;
 use crate::core::models::*;
-use surrealdb::types::Datetime;
-mod migration;
-
 use crate::*;
+pub use kinds::*;
+pub use migration::*;
+use surrealdb::types::Datetime;
 
-mod kinds;
+pub mod kinds;
+pub mod migration;
+
 /// ['src/core/models/field.md']
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq)]
 pub struct Field {

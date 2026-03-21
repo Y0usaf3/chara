@@ -1,41 +1,26 @@
 #[cfg(test)]
 mod test;
 
-pub mod app;
-pub mod core;
+// Standard library
+use std::sync::LazyLock;
 
-use axum::{
-    http::StatusCode,
-    routing::{get, post},
-    Router,
-};
 use bitmask::bitmask;
-use chacha20poly1305::*;
+use chacha20poly1305::{
+    aead::{Aead, AeadCore, KeyInit, OsRng},
+    ChaCha20Poly1305, Key, Nonce,
+};
 use dotenv::dotenv as denv;
 use dotenv_codegen::dotenv;
 use hackclub_auth_api::*;
-use leptos::prelude::*;
-use leptos_axum::generate_route_list;
-
-use crate::app::App;
-
+use serde::{Deserialize, Serialize};
 use surrealdb::opt::PatchOp;
-
-use std::sync::LazyLock;
-use surrealdb::engine::remote::ws::Client;
-use surrealdb::engine::remote::ws::Ws;
-use surrealdb::opt::auth::Root;
 use surrealdb::types::SurrealValue;
-use surrealdb::Surreal;
 
-use core::db::error::Irror;
+// Internal modules
+pub mod app;
+pub mod core;
 
-use serde::*;
-
-use chacha20poly1305::{
-    aead::{Aead, AeadCore, KeyInit, OsRng},
-    ChaCha20Poly1305, Nonce,
-};
+use crate::core::db::error::Irror;
 
 pub static HCAUTH: LazyLock<HCAuth> = LazyLock::new(|| {
     HCAuth::new(

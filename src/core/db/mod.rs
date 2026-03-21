@@ -1,4 +1,9 @@
-use crate::*;
+use std::sync::LazyLock;
+
+use dotenv_codegen::dotenv;
+use surrealdb::engine::remote::ws::{Client, Ws};
+use surrealdb::opt::auth::Root;
+use surrealdb::Surreal;
 
 pub static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
@@ -19,14 +24,18 @@ pub async fn init() {
 }
 
 pub mod error {
-    use crate::core::service::errors::*;
-    use axum::http::StatusCode;
-    use axum::response::IntoResponse;
-    use axum::response::Response;
-    use axum::Json;
+    use axum::{
+        http::StatusCode,
+        response::{IntoResponse, Response},
+        Json,
+    };
     use chacha20poly1305::Error as EncryptionErr;
     use serde_json::json;
     use thiserror::Error;
+
+    use crate::core::service::errors::{
+        AuthError, BaseError, DatabaseError, EncryptionError, PermissionError, TableError, UserError,
+    };
 
     #[derive(Error, Debug)]
     pub enum Irror {

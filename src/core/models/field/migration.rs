@@ -1,4 +1,4 @@
-use crate::core::models::field::*;
+use super::*;
 use ::serde::{Deserialize, Serialize};
 
 // in progress ig lol
