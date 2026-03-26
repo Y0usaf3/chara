@@ -1,7 +1,8 @@
 use app::*;
 use axum::Router;
 use leptos::prelude::*;
-use leptos_axum::{generate_route_list, LeptosRoutes};
+use leptos_axum::{LeptosRoutes, generate_route_list};
+use std::net::SocketAddr;
 
 #[tokio::main]
 async fn main() {
@@ -21,7 +22,10 @@ async fn main() {
         .with_state(leptos_options);
 
     let listener = tokio::net::TcpListener::bind(&addr).await.unwrap();
-    axum::serve(listener, app.into_make_service())
-        .await
-        .unwrap();
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }

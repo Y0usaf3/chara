@@ -1,7 +1,7 @@
 [package]
 name = "app"
-version = "0.1.0"
-edition = "2021"
+version = "0.0.1"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,13 +10,18 @@ leptos.workspace = true
 leptos_meta.workspace = true
 leptos_router.workspace = true
 leptos_axum = { workspace = true, optional = true }
-
 http.workspace = true
 cfg-if.workspace = true
 thiserror.workspace = true
+axum = { workspace = true, optional = true }
+libc = { path = "../core", optional = true }
+tw_merge.workspace = true
+icons.workspace = true
+leptos_ui.workspace = true
+
 
 [features]
 default = []
 hydrate = ["leptos/hydrate"]
-ssr = ["leptos/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:leptos_axum"]
+ssr = ["leptos/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:leptos_axum", "dep:libc", "dep:axum"]
 
