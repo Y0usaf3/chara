@@ -8,7 +8,6 @@ use axum_extra::extract::CookieJar;
 use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::cookie::SameSite;
 use charac::HCAUTH;
-use charac::service::user::AuthMethod;
 use charac::service::user::UserService;
 use headers::UserAgent;
 use leptos::prelude::*;
@@ -44,14 +43,12 @@ async fn oauth(
     let access_token = auth_res.access_token.ok_or(StatusCode::UNAUTHORIZED)?;
     println!("registering");
 
-let service = UserService::register(access_token)
-    .await
-    .map_err(|e| {
-        eprintln!("Registration error: {:?}", e); 
-        
+    let service = UserService::register(access_token).await.map_err(|e| {
+        eprintln!("Registration error: {:?}", e);
+
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
-println!("creating token");
+    println!("creating token");
 
     let session_token = service
         .create_session(addr.ip().to_string(), user_agent)

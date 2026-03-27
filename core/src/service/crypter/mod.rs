@@ -1,11 +1,11 @@
-use crate::service::errors::EncryptionError;
 use crate::MASTER_KEY;
+use crate::service::errors::EncryptionError;
 use chacha20poly1305::{
-    aead::{Aead, AeadCore, KeyInit, OsRng},
     ChaCha20Poly1305, Nonce,
+    aead::{Aead, AeadCore, KeyInit, OsRng},
 };
 
-pub async fn encrypt_token(token: &str) -> Result<Vec<u8>, EncryptionError> {
+pub async fn encrypt_token(token: &str) -> Result<String, EncryptionError> {
     let cipher = ChaCha20Poly1305::new(&MASTER_KEY);
     let nonce = ChaCha20Poly1305::generate_nonce(&mut OsRng);
 
@@ -16,10 +16,14 @@ pub async fn encrypt_token(token: &str) -> Result<Vec<u8>, EncryptionError> {
     let mut encrypted = nonce.to_vec();
     encrypted.extend_from_slice(&ciphertext);
 
-    Ok(encrypted)
+    Ok(str::from_utf8(&encrypted)
+        .ok()
+        .ok_or(EncryptionError::DecryptionFailed)?
+        .to_string())
 }
 
-pub async fn decrypt_token(encrypted: &[u8]) -> Result<String, EncryptionError> {
+pub async fn decrypt_token(encrypted: String) -> Result<String, EncryptionError> {
+    let encrypted: &[u8] = encrypted.as_bytes();
     if encrypted.len() < 12 {
         return Err(EncryptionError::DecryptionFailed);
     }
