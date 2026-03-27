@@ -13,6 +13,7 @@ pub struct Session {
     pub expires_at: Option<Datetime>, // make surrealdb drop the session if it expires
 }
 
+#[derive(SurrealValue)]
 pub struct InsertSession {
     pub(crate) user: UserId,
     pub(crate) token: String,
