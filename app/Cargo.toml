@@ -14,6 +14,9 @@ leptos_axum = { workspace = true, optional = true }
 http.workspace = true
 cfg-if.workspace = true
 thiserror.workspace = true
+tw_merge.workspace = true
+icons.workspace = true
+leptos_ui.workspace = true
 
 [features]
 default = []
