@@ -1,11 +1,11 @@
 use app::*;
 use axum::Router;
 use leptos::prelude::*;
-use leptos_axum::{generate_route_list, LeptosRoutes};
+use leptos_axum::{LeptosRoutes, generate_route_list};
 
 #[tokio::main]
 async fn main() {
-    libc::init().await;
+    charac::init().await;
     let conf = get_configuration(None).unwrap();
     let addr = conf.leptos_options.site_addr;
     let leptos_options = conf.leptos_options;
