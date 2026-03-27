@@ -19,9 +19,10 @@ tw_merge.workspace = true
 icons.workspace = true
 leptos_ui.workspace = true
 leptos-use.workspace = true
+axum-extra = { workspace = true, optional = true }
 
 [features]
 default = []
 hydrate = ["leptos/hydrate"]
-ssr = ["leptos/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:leptos_axum", "dep:charac", "dep:axum"]
+ssr = ["leptos/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:leptos_axum", "dep:charac", "dep:axum", "dep:axum-extra"]
 

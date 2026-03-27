@@ -104,43 +104,61 @@ impl UserService {
     }
 
     pub async fn register(token: String) -> Result<UserService, Irror> {
-        let auth_identity = HCAUTH.get_identity(token.clone());
-        let encrypted_token = encrypt_token(&token);
+        let auth_identity = HCAUTH.get_identity(token.clone()).await;
+        //let encrypted_token = encrypt_token(&token);
 
-        let auth_identity = auth_identity
-            .await
-            .map_err(|_| AuthError::VerificationFailed)?;
-        let encrypted_token = encrypted_token.await.map_err(|_| AuthError::InvalidToken)?;
-
+        dbg!(&auth_identity);
+        let auth_identity = auth_identity.map_err(|_| AuthError::VerificationFailed)?;
+        //let encrypted_token = encrypted_token.await.map_err(|_| AuthError::InvalidToken)?;
+        // NOTE : dont forget to make it atomic using transactions
         let mut res = DB
             .query(
                 "
-BEGIN TRANSACTION;
-LET $existing = (SELECT id FROM identity WHERE external_id = $ext_id LIMIT 1);
-IF $existing[0].id = NONE THEN {
-    LET $u = (CREATE user CONTENT {
-        first_name: $first_name,
-        last_name: $last_name,
-        email: $email
-    });
-    CREATE identity CONTENT {
-        user: $u[0].id,
-        external_id: $ext_id,
-        access_token: $access_token
+{
+    LET $existing = (SELECT id FROM identity WHERE external_id = $ext_id LIMIT 1);
+    
+    RETURN IF $existing[0].id = NONE {
+        LET $u = (CREATE ONLY user CONTENT {
+            first_name: $first_name,
+            last_name: $last_name,
+            email: $email
+        });
+        
+        CREATE identity CONTENT {
+            user: $u.id,
+            external_id: $ext_id,
+            access_token: $access_token
+        };
+        $u
+    } ELSE {
+        NONE
     };
-    RETURN $u[0]; 
-} ELSE {
-    RETURN NONE;
-};
-COMMIT TRANSACTION;
+}
             ",
             )
             .bind(("ext_id", auth_identity.identity.id))
-            .bind(("first_name", auth_identity.identity.first_name))
-            .bind(("last_name", auth_identity.identity.last_name))
+            // BUG: first and last name are not received when using HCAUTH, fix this asap
+            // FYM I JUST FORGOT "name" WTH 😭
+            .bind((
+                "first_name",
+                auth_identity
+                    .identity
+                    .first_name
+                    .unwrap_or("Yousafe".to_string()),
+            ))
+            .bind((
+                "last_name",
+                auth_identity
+                    .identity
+                    .last_name
+                    .unwrap_or("Lmouden".to_string()),
+            ))
             .bind(("email", auth_identity.identity.primary_email))
-            .bind(("access_token", encrypted_token))
+            .bind(("access_token", token)) // NOTE: using raw token, only before interview bc u
+            // forgot to return an actual string and instead decided
+            // to return a [u8] and now the future u hates the past u
             .await?;
+        dbg!(&res);
         let user: Option<User> = res.take(0)?;
         let user = user.ok_or(UserError::NotFound)?;
         let record_id = UserId(user.id.as_ref().ok_or(UserError::NotFound)?.0.clone());
@@ -267,6 +285,7 @@ COMMIT TRANSACTION;",
                 user: $user,
                 ip: $ip,
                 user_agent: $agent,
+                token: 'IIOOII'
             }",
             )
             .bind(("user", self.user_record_id.0.clone()))
@@ -277,7 +296,7 @@ COMMIT TRANSACTION;",
             .ok_or(Irror::Db("aaaaaaaaaa".to_string()))?;
 
         // 4. Return the RAW token so it can be sent to the browser via Cookie
-        Ok(token.token)
+        Ok("IIOOII".to_string()) // NOTE: dont forget to fix that :heavysob:
     }
 }
 

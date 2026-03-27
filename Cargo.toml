@@ -39,12 +39,16 @@ mime_serde_shim = "0.2.2"
 uuid = { version = "1.22.0", features = ["v4"] }
 phonenumber = "0.3.9"
 iso_currency = { version = "0.5.3", features = ["with-serde"] }
-hackclub_auth_api = "0.1.2"
+hackclub_auth_api = "0.1.3"
 hex = "0.4.3"
 dotenvy = "0.15.7"
 tw_merge = { version = "0.1.20", features = ["variant"] }
 icons = { version = "0.18.0", features = ["leptos"] }
 leptos_ui = "0.3.21"
+axum-extra = { version = "0.12.5", features = ["cookie","typed-header"] }
+time = "0.3.47"
+headers = "0.4.1"
+
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 
 # A leptos project defines which workspace members
