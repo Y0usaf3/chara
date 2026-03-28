@@ -11,8 +11,8 @@ macro_rules! env_required {
 }
 
 use std::sync::LazyLock;
-use surrealdb::engine::local::{Db, Mem};
 use surrealdb::Surreal;
+use surrealdb::engine::local::{Db, Mem};
 
 pub mod error;
 pub use error::Irror;
@@ -25,10 +25,7 @@ pub static DB: LazyLock<Surreal<Db>> = LazyLock::new(Surreal::init);
 
 pub async fn init() {
     DB.connect::<Mem>(()).await.unwrap();
-    DB.use_ns(env_required!("DB_NAMESPACE"))
-        .use_db("main")
-        .await
-        .unwrap();
+    DB.use_ns("main").use_db("main").await.unwrap();
     DB.query(include_str!("../../SQL/main.surql"))
         .await
         .unwrap();
