@@ -1,7 +1,10 @@
 use app::*;
 use axum::Router;
+use axum::routing::get;
 use leptos::prelude::*;
 use leptos_axum::{LeptosRoutes, generate_route_list};
+
+mod oauth;
 
 #[tokio::main]
 async fn main() {
@@ -13,6 +16,8 @@ async fn main() {
     let routes = generate_route_list(App);
 
     let app = Router::new()
+        .route("/callback", get(oauth::oauth))
+        .route("/auth", get(oauth::redirect_to_oauth))
         .leptos_routes(&leptos_options, routes, {
             let leptos_options = leptos_options.clone();
             move || shell(leptos_options.clone())

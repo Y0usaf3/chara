@@ -56,7 +56,10 @@ fn HomePage() -> impl IntoView {
     let theme = ThemeMode::init();
 
     view! {
-        <div class="relative min-h-screen bg-[var(--background)] text-[var(--foreground)]" class:dark=move || theme.is_dark()>
+        <div
+            class="relative min-h-screen bg-[var(--background)] text-[var(--foreground)]"
+            class:dark=move || theme.is_dark()
+        >
 
             <div class="absolute top-4 right-4 p-2">
                 <ThemeToggle />
@@ -69,12 +72,7 @@ fn HomePage() -> impl IntoView {
                 />
 
                 <div class="flex gap-4">
-                    <Button href="/login" variant=ButtonVariant::Accent>
-                        "Login"
-                    </Button>
-                    <Button href="/register" variant=ButtonVariant::Secondary>
-                        "Register"
-                    </Button>
+                    <Button href="/auth">"OAuth with Hackclub Auth!"</Button>
                 </div>
             </div>
 

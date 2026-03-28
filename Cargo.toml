@@ -14,7 +14,7 @@ leptos_meta = { version = "0.8.2" }
 leptos_router = { version = "0.8.2" }
 leptos_axum = { version = "0.8.2" }
 
-axum = "0.8.8"
+axum = { version = "0.8.8", features = ["macros"] }
 cfg-if = "1.0.4"
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
@@ -46,6 +46,9 @@ icons = { version = "0.18.0", features = ["leptos"] }
 leptos_ui = "0.3.21"
 rand = "0.10.0"
 web-sys = { version = "0.3.92", features = ["Storage", "MediaQueryList", "Window"] }
+axum-extra = { version = "0.12.5", features = ["cookie", "cookie-private", "cookie-signed", "typed-header"] }
+headers = "0.4.1"
+time = "0.3.47"
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 
