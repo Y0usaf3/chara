@@ -1,5 +1,5 @@
 mod components;
-use components::ui::button::{Button, ButtonVariant};
+use components::ui::button::Button;
 use components::ui::theme_toggle::ThemeToggle;
 use leptos::prelude::*;
 use leptos_meta::{MetaTags, Stylesheet, Title, provide_meta_context};
@@ -67,7 +67,7 @@ fn HomePage() -> impl IntoView {
 
             <div class="flex flex-col items-center justify-center min-h-screen gap-6">
                 <img
-                    class="w-40 h-auto"
+                    class="w-40 h-auto rounded-sm border"
                     src="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftse1.mm.bing.net%2Fth%2Fid%2FOIP.SpWSlKomy6sWbIwXJ8dsNgHaM-%3Fpid%3DApi&f=1&ipt=4a32cad500d8c6b9988ef34a78e8fe8eba544f6a176e40c50a87083c4ce65a0c"
                 />
 
