@@ -2,6 +2,7 @@ mod db;
 pub mod models;
 pub mod service;
 pub use db::init;
+pub use dotenvy;
 
 use chacha20poly1305::Key;
 use hackclub_auth_api::HCAuth;

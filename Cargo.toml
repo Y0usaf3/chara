@@ -49,6 +49,7 @@ web-sys = { version = "0.3.92", features = ["Storage", "MediaQueryList", "Window
 axum-extra = { version = "0.12.5", features = ["cookie", "cookie-private", "cookie-signed", "typed-header"] }
 headers = "0.4.1"
 time = "0.3.47"
+dotenvy = "0.15.7"
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 

@@ -2,6 +2,7 @@
 macro_rules! env_required {
     ($key:expr) => {{
         use std::env;
+        let _ = $crate::dotenvy::dotenv();
 
         match env::var($key) {
             Ok(val) if !val.trim().is_empty() => val,

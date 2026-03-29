@@ -25,3 +25,4 @@ phonenumber.workspace = true
 hackclub_auth_api.workspace = true
 hex.workspace = true
 rand.workspace = true
+dotenvy.workspace = true
