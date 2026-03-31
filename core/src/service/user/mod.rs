@@ -256,7 +256,7 @@ impl UserService {
 
     pub async fn is_admin(&self) -> Result<bool, Irror> {
         let mut res = DB
-            .query("SELECT (role = 'admin') AS value FROM user WHERE id = $user;")
+            .query("SELECT (role = 'admin') AS value FROM user WHERE id = $user AND is_deleted = false;")
             .bind(("user", self.user_record_id.clone()))
             .await?;
         let value: Option<IsAdmin> = res.take(0)?;
@@ -320,6 +320,32 @@ impl UserService {
             .await
             .map_err(|e| Irror::Db(e.to_string()))?;
         Ok(random_token)
+    }
+
+    pub async fn list_bases(&self) -> Result<Vec<models::Base>, Irror> {
+        let mut res = DB
+            .query(
+                "
+            SELECT * FROM base 
+            WHERE is_deleted = false 
+            AND (
+                -- 1. User is the owner
+                owner = $user 
+                -- 2. User is a global admin
+                OR (SELECT VALUE role FROM $user)[0] == 'admin'
+                -- 3. User has 'View' (bit 2) permission via a relation
+                OR id IN (
+                    SELECT VALUE out FROM can_access_base 
+                    WHERE in = $user 
+                    AND fn::can(perms, 2)
+                )
+            );
+            ",
+            )
+            .bind(("user", self.user_record_id.clone()))
+            .await?;
+        let bases: Vec<Base> = res.take(0)?;
+        Ok(bases)
     }
 }
 
