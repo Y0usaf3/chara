@@ -51,6 +51,8 @@ headers = "0.4.1"
 time = "0.3.47"
 dotenvy = "0.15.7"
 base64 = "0.22.1"
+strum = "0.28"
+strum_macros = "0.28"
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 
