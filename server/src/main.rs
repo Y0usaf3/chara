@@ -9,24 +9,6 @@ use std::net::SocketAddr;
 
 mod oauth;
 
-#[derive(Clone)]
-pub struct AppState {
-    pub leptos_options: LeptosOptions,
-    pub key: Key,
-}
-
-impl FromRef<AppState> for Key {
-    fn from_ref(state: &AppState) -> Self {
-        state.key.clone()
-    }
-}
-
-impl FromRef<AppState> for LeptosOptions {
-    fn from_ref(state: &AppState) -> Self {
-        state.leptos_options.clone()
-    }
-}
-
 #[tokio::main]
 async fn main() {
     charac::init().await;

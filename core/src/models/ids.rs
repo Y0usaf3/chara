@@ -1,5 +1,5 @@
-use surrealdb::types::record_id::RecordId as Thing;
 use surrealdb::types::SurrealValue;
+use surrealdb::types::record_id::RecordId as Thing;
 
 macro_rules! define_ids {
     ($($name:ident),*) => {

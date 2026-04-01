@@ -23,9 +23,10 @@ strum.workspace = true
 strum_macros.workspace = true
 serde.workspace = true
 axum-extra = {workspace = true,optional=true}
+axum = {workspace = true, optional=true}
 
 [features]
 default = []
 hydrate = ["leptos/hydrate"]
-ssr = ["leptos/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:leptos_axum", "dep:charac", "dep:server", "dep:axum-extra"]
+ssr = ["leptos/ssr", "leptos_meta/ssr", "leptos_router/ssr", "dep:leptos_axum", "dep:charac", "dep:axum-extra", "dep:axum"]
 

@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use leptos_ui::variants;
 
-// TODO 💪 Loading state (demo_use_timeout_fn.rs and demo_button.rs)
+// TODO  Loading state (demo_use_timeout_fn.rs and demo_button.rs)
 
 variants! {
     Button {
@@ -37,3 +37,4 @@ variants! {
         }
     }
 }
+
