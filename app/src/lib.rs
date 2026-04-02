@@ -1,5 +1,9 @@
 mod components;
 mod pages;
+mod utils;
+
+#[cfg(feature = "ssr")]
+pub use utils::get_authenticated_service;
 
 use crate::pages::*;
 use leptos::prelude::*;

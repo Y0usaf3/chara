@@ -94,7 +94,7 @@ impl UserService {
                     .query(
                         "SELECT VALUE user.* FROM session 
                         WHERE ip = $ip 
-                        AND crypto::sha512(`token`) == $tokenn  
+                        AND crypto::sha512($tokenn) == `token` 
                         AND user_agent = $user_agent 
                         AND expires_at > time::now()
                         AND user.is_deleted = false",
@@ -104,6 +104,7 @@ impl UserService {
                     .bind(("user_agent", session.agent))
                     .await?;
                 let ident: Option<User> = res.take(0)?;
+
                 ident.ok_or(AuthError::SessionNotFound)?
             }
         };
