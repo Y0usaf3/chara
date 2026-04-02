@@ -12,6 +12,8 @@ pub struct UserBase {
 
 #[server]
 pub async fn get_user_bases() -> Result<Vec<UserBase>, ServerFnError> {
+    use std::time::Instant;
+    let start = Instant::now();
     let service = crate::get_authenticated_service().await?;
 
     let bases = service
@@ -27,17 +29,22 @@ pub async fn get_user_bases() -> Result<Vec<UserBase>, ServerFnError> {
             id: b.id.map(|id| format!("{:?}", id.0.key)).unwrap_or_default(),
         })
         .collect();
-
+    let duration = start.elapsed().as_millis();
+    println!("[get_user_bases] finished in {}ms", duration);
     Ok(user_bases)
 }
 
 #[server]
 pub async fn create_base(name: String) -> Result<UserBase, ServerFnError> {
+    use std::time::Instant;
+    let start = Instant::now();
     let service = crate::get_authenticated_service().await?;
     let base = service
         .create_base(name)
         .await
         .map_err(|e| ServerFnError::new(format!("Base creation failed : {e}")))?;
+    let duration = start.elapsed().as_millis();
+    println!("[create_base] finished in {}ms", duration);
     Ok(UserBase {
         name: base.name,
         owner_name: format!("{:?}", base.owner.0.key),

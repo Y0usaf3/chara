@@ -24,6 +24,7 @@ strum_macros.workspace = true
 serde.workspace = true
 axum-extra = {workspace = true,optional=true}
 axum = {workspace = true, optional=true}
+tracing = {workspace=true,optional=true}
 
 [features]
 default = []
