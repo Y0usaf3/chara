@@ -8,8 +8,7 @@ edition = "2024"
 [dependencies]
 app = { path = "../app", default-features = false, features = ["ssr"] }
 # named "lib chara" so we dont overwrite the core functions of rust :pf:
-libc = { path = "../core" }
-
+charac = { path = "../core" }
 leptos = { workspace = true, features = [ "ssr" ]}
 leptos_axum.workspace = true
 
@@ -20,3 +19,7 @@ tower.workspace = true
 tower-http.workspace = true
 log.workspace = true
 surrealdb.workspace = true
+axum-extra.workspace = true
+headers.workspace = true
+serde.workspace = true
+time.workspace = true

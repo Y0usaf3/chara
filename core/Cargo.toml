@@ -1,5 +1,5 @@
 [package]
-name = "libc"
+name = "charac"
 version = "0.0.1"
 edition = "2024"
 
@@ -24,3 +24,6 @@ iso_currency.workspace = true
 phonenumber.workspace = true
 hackclub_auth_api.workspace = true
 hex.workspace = true
+rand.workspace = true
+dotenvy.workspace = true
+base64.workspace = true

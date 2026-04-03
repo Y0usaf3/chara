@@ -14,7 +14,7 @@ leptos_meta = { version = "0.8.2" }
 leptos_router = { version = "0.8.2" }
 leptos_axum = { version = "0.8.2" }
 
-axum = "0.8.8"
+axum = { version = "0.8.8", features = ["macros"] }
 cfg-if = "1.0.4"
 console_error_panic_hook = "0.1.7"
 console_log = "1.0.0"
@@ -39,8 +39,21 @@ mime_serde_shim = "0.2.2"
 uuid = { version = "1.22.0", features = ["v4"] }
 phonenumber = "0.3.9"
 iso_currency = { version = "0.5.3", features = ["with-serde"] }
-hackclub_auth_api = "0.1.1"
+hackclub_auth_api = "0.1.5"
 hex = "0.4.3"
+tw_merge = { version = "0.1.20", features = ["variant"] }
+icons = { version = "0.18.0", features = ["leptos"] }
+leptos_ui = "0.3.21"
+rand = "0.10.0"
+web-sys = { version = "0.3.92", features = ["Storage", "MediaQueryList", "Window"] }
+axum-extra = { version = "0.12.5", features = ["cookie", "cookie-private", "cookie-signed", "typed-header"] }
+headers = "0.4.1"
+time = "0.3.47"
+dotenvy = "0.15.7"
+base64 = "0.22.1"
+strum = "0.28"
+strum_macros = "0.28"
+tracing = "0.1.44"
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 

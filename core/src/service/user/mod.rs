@@ -12,14 +12,23 @@
 // sooooooooooooooooooooooooooooooon:sob:
 
 // make a function to get record id insteado f having to rerun this shit a million time
+
+use crate::HCAUTH;
 use crate::db::*;
+use crate::models;
 use crate::models::*;
 use crate::service::base::*;
 use crate::service::crypter::*;
 use crate::service::errors::{AuthError, BaseError, PermissionError, UserError};
-use crate::HCAUTH;
+use base64::Engine;
+use base64::engine::general_purpose;
+use chrono::{DateTime, Utc};
+use rand::RngExt;
+use std::time::{Duration, SystemTime};
 use surrealdb::opt::PatchOp;
 use surrealdb::types::SurrealValue;
+
+// TODO: add functions to fetch data from HC auth
 
 #[derive(Debug, Clone, PartialEq, SurrealValue, Default)]
 pub struct IsAdmin {
@@ -31,7 +40,7 @@ impl IsAdmin {
     }
 }
 
-pub struct SessionI {
+pub struct Session {
     pub token: String,
     pub ip: String,
     pub agent: String,
@@ -39,7 +48,7 @@ pub struct SessionI {
 
 pub enum AuthMethod {
     Hca(String),
-    Session(SessionI),
+    Session(Session),
 }
 
 #[derive(Debug)]
@@ -56,9 +65,19 @@ impl UserService {
 
     pub async fn login(method: AuthMethod) -> Result<Self, Irror> {
         let user: User = match method {
-            AuthMethod::Hca(token) => {
+            AuthMethod::Hca(code) => {
+                // NOTE: are we sure hackclub auth is really a secure source, what could go wrong
+                // ????
+                // [insert what could go wrong here]
+
+                let token = HCAUTH
+                    .exchange_code(code)
+                    .await
+                    .ok()
+                    .ok_or(AuthError::VerificationFailed)?;
+
                 let auth_identity = HCAUTH
-                    .get_identity(token)
+                    .get_identity(token.access_token.ok_or(AuthError::VerificationFailed)?)
                     .await
                     .map_err(|_| AuthError::InvalidToken)?;
 
@@ -75,7 +94,7 @@ impl UserService {
                     .query(
                         "SELECT VALUE user.* FROM session 
                         WHERE ip = $ip 
-                        AND crypto::argon2::compare(`token`, $tokenn)  
+                        AND crypto::sha512($tokenn) == `token` 
                         AND user_agent = $user_agent 
                         AND expires_at > time::now()
                         AND user.is_deleted = false",
@@ -85,6 +104,7 @@ impl UserService {
                     .bind(("user_agent", session.agent))
                     .await?;
                 let ident: Option<User> = res.take(0)?;
+
                 ident.ok_or(AuthError::SessionNotFound)?
             }
         };
@@ -102,36 +122,64 @@ impl UserService {
         })
     }
 
-    pub async fn register(token: String) -> Result<UserService, Irror> {
-        let auth_identity = HCAUTH.get_identity(token.clone());
-        let encrypted_token = encrypt_token(&token);
+    // TODO: omg look at this spagethi code, u gotta find a nicer way uh ;-;
 
-        let auth_identity = auth_identity
+    pub async fn register(code: String) -> Result<UserService, Irror> {
+        let tmp = HCAUTH.exchange_code(code).await;
+
+        let token = tmp.ok().ok_or(AuthError::VerificationFailed)?;
+
+        let access_token = token
+            .access_token
+            .as_ref()
+            .ok_or(AuthError::VerificationFailed)?;
+        let auth_identity = HCAUTH
+            .get_identity(access_token.to_string())
             .await
             .map_err(|_| AuthError::VerificationFailed)?;
-        let encrypted_token = encrypted_token.await.map_err(|_| AuthError::InvalidToken)?;
+
+        let encrypted_token = encrypt_token(access_token)
+            .await
+            .map_err(|_| AuthError::InvalidToken)?;
+
+        let encrypted_refresh_token = encrypt_token(
+            token
+                .refresh_token
+                .ok_or(AuthError::VerificationFailed)?
+                .as_str(),
+        )
+        .await
+        .map_err(|_| AuthError::InvalidToken)?;
+        let now = SystemTime::now();
+
+        let expiration_system_time = now
+            + Duration::from_secs(token.expires_in.ok_or(AuthError::VerificationFailed)? as u64);
+
+        let expires_at = DateTime::<Utc>::from(expiration_system_time);
 
         let mut res = DB
             .query(
                 "
-BEGIN TRANSACTION;
-LET $existing = (SELECT id FROM identity WHERE external_id = $ext_id LIMIT 1);
-IF $existing[0].id = NONE THEN {
-    LET $u = (CREATE user CONTENT {
-        first_name: $first_name,
-        last_name: $last_name,
-        email: $email
-    });
-    CREATE identity CONTENT {
-        user: $u[0].id,
-        external_id: $ext_id,
-        access_token: $access_token
-    };
-    RETURN $u[0]; 
-} ELSE {
-    RETURN NONE;
-};
-COMMIT TRANSACTION;
+               BEGIN TRANSACTION;
+                LET $existing = (SELECT id FROM identity WHERE external_id = $ext_id LIMIT 1);
+                IF $existing[0].id != NONE {
+                    RETURN NONE;
+                } ELSE {
+                    LET $u = (CREATE user CONTENT {
+                        first_name: $first_name,
+                        last_name: $last_name,
+                        email: $email
+                    });
+                    CREATE identity CONTENT {
+                        user: $u[0].id,
+                        external_id: $ext_id,
+                        access_token: $access_token,
+                        refresh_token: $refresh_token,
+                        expires_at: $expires_at
+                    };
+                    RETURN $u[0]; 
+                };
+                COMMIT TRANSACTION;
             ",
             )
             .bind(("ext_id", auth_identity.identity.id))
@@ -139,8 +187,10 @@ COMMIT TRANSACTION;
             .bind(("last_name", auth_identity.identity.last_name))
             .bind(("email", auth_identity.identity.primary_email))
             .bind(("access_token", encrypted_token))
+            .bind(("refresh_token", encrypted_refresh_token))
+            .bind(("expires_at", expires_at))
             .await?;
-        let user: Option<User> = res.take(0)?;
+        let user: Option<User> = res.take(2)?;
         let user = user.ok_or(UserError::NotFound)?;
         let record_id = UserId(user.id.as_ref().ok_or(UserError::NotFound)?.0.clone());
 
@@ -179,12 +229,12 @@ COMMIT TRANSACTION;
         let user: Option<User> = DB
             .query(
                 "
-BEGIN TRANSACTION;
-LET $caller = (SELECT role FROM user WHERE id = $self_id AND is_deleted = false)[0];
-IF $caller.role != 'admin' THEN THROW 'Unauthorized: Admin privileges required' END;
-IF $self_id == $user_id THEN THROW 'Cannot delete self' END;
-UPDATE $user_id SET is_deleted = true RETURN AFTER;
-COMMIT TRANSACTION;",
+                BEGIN TRANSACTION;
+                LET $caller = (SELECT role FROM user WHERE id = $self_id AND is_deleted = false)[0];
+                IF $caller.role != 'admin' THEN THROW 'Unauthorized: Admin privileges required' END;
+                IF $self_id == $user_id THEN THROW 'Cannot delete self' END;
+                UPDATE $user_id SET is_deleted = true RETURN AFTER;
+                COMMIT TRANSACTION;",
             )
             .bind(("self_id", self.user_record_id.clone()))
             .bind(("user_id", user_id.0.clone()))
@@ -207,7 +257,7 @@ COMMIT TRANSACTION;",
 
     pub async fn is_admin(&self) -> Result<bool, Irror> {
         let mut res = DB
-            .query("SELECT (role = 'admin') AS value FROM user WHERE id = $user;")
+            .query("SELECT (role = 'admin') AS value FROM user WHERE id = $user AND is_deleted = false;")
             .bind(("user", self.user_record_id.clone()))
             .await?;
         let value: Option<IsAdmin> = res.take(0)?;
@@ -256,6 +306,48 @@ COMMIT TRANSACTION;",
         self.current_base = Some(service.clone());
         Ok(service.base)
     }
+
+    pub async fn create_session(&self, ip: String, agent: String) -> Result<String, Irror> {
+        let bytes: Vec<u8> = (0..32).map(|_| rand::rng().random()).collect();
+        let random_token = general_purpose::STANDARD.encode(bytes);
+        let session = models::InsertSession {
+            ip,
+            user_agent: agent,
+            user: self.user_record_id.clone(),
+            token: random_token.clone(),
+        };
+        DB.create::<Option<models::Session>>("session")
+            .content(session)
+            .await
+            .map_err(|e| Irror::Db(e.to_string()))?;
+        Ok(random_token)
+    }
+
+    pub async fn list_bases(&self) -> Result<Vec<models::Base>, Irror> {
+        let mut res = DB
+            .query(
+                "
+            SELECT * FROM base 
+            WHERE is_deleted = false 
+            AND (
+                -- 1. User is the owner
+                owner = $user 
+                -- 2. User is a global admin
+                OR (SELECT VALUE role FROM $user)[0] == 'admin'
+                -- 3. User has 'View' (bit 2) permission via a relation
+                OR id IN (
+                    SELECT VALUE out FROM can_access_base 
+                    WHERE in = $user 
+                    AND fn::can(perms, 2)
+                )
+            );
+            ",
+            )
+            .bind(("user", self.user_record_id.clone()))
+            .await?;
+        let bases: Vec<Base> = res.take(0)?;
+        Ok(bases)
+    }
 }
 
 // ok, i gotta learn how argon2 works again, dam i forgot how it works its been like, 6months or
@@ -280,3 +372,9 @@ COMMIT TRANSACTION;",
 // now the user is the one that makes the bases and access the tables, things will be much much
 // easier , now ill have to write a Base Service, it has an owner, and an isolated automatisation
 // runner, i gotta work on this asap
+//
+// ok uh now i gotta write smt to get the sessions, but at first i should see if i can set a record
+// expiration for the session
+// nop.. there isnt, so ig ill add a loop event where we delete old sessions every , lets say 5min
+//
+// also switched to sha512 bc argon2 has uh, constant time, so it WILL slow down the server uh
