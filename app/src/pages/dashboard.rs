@@ -19,11 +19,90 @@ use crate::components::{
 use icons::{ArrowUpRight, FolderCode, Lock, Plus};
 use leptos::prelude::*;
 
+// TODO: make a component for creating a base
+
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct UserBase {
     name: String,
     owner_name: String,
     id: String,
+}
+
+#[component]
+pub fn CreateBaseDialog(
+    title: impl IntoView + 'static,
+    create_action: Action<String, Result<UserBase, ServerFnError>>,
+) -> impl IntoView {
+    let (name, set_name) = signal("".to_string());
+
+    Effect::new(move |_| {
+        if let Some(Ok(_)) = create_action.value().get() {
+            set_name.set("".to_string());
+        }
+    });
+
+    view! {
+        <Dialog>
+            <DialogTrigger>{title}</DialogTrigger>
+            <DialogContent class="sm:max-w-[425px]">
+                <DialogBody>
+                    <DialogHeader>
+                        <DialogTitle>"Create a Base!"</DialogTitle>
+
+                        <DialogDescription>
+                            {move || {
+                                create_action
+                                    .value()
+                                    .get()
+                                    .and_then(|res| {
+                                        if let Err(e) = res {
+                                            Some(
+                                                view! {
+                                                    <p class="text-destructive text-sm font-medium">
+                                                        {e.to_string()}
+                                                    </p>
+                                                }
+                                                    .into_any(),
+                                            )
+                                        } else {
+                                            Some(
+                                                "To create a base, you first need a nice name, what could it be :3 ?"
+                                                    .into_any(),
+                                            )
+                                        }
+                                    })
+                            }}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div class="flex flex-col gap-4 justify-center">
+                        <div class="flex flex-col gap-2">
+                            <Label html_for="name-1">Name</Label>
+                            <Input
+                                on:input=move |ev| {
+                                    set_name.set(event_target_value(&ev));
+                                }
+                                prop:value=move || name.get()
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose class="w-full sm:w-fit">"Cancel"</DialogClose>
+                        <Button
+                            attr:r#type="button"
+                            on:click=move |_| {
+                                create_action.dispatch(name.get());
+                                set_name.set("".to_string());
+                            }
+                        >
+                            "Create"
+                        </Button>
+                    </DialogFooter>
+                </DialogBody>
+            </DialogContent>
+        </Dialog>
+    }
 }
 
 #[server]
@@ -41,8 +120,8 @@ pub async fn get_user_bases() -> Result<Vec<UserBase>, ServerFnError> {
         .into_iter()
         .map(|b| UserBase {
             name: b.name,
-            owner_name: format!("{:?}", b.owner.0),
-            id: b.id.map(|id| format!("{:?}", id.0)).unwrap_or_default(),
+            owner_name: format!("{:?}", b.owner.0.key),
+            id: b.id.map(|id| format!("{:?}", id.0.key)).unwrap_or_default(),
         })
         .collect();
     let duration = start.elapsed().as_millis();
@@ -58,7 +137,7 @@ pub async fn create_base(name: String) -> Result<UserBase, ServerFnError> {
     let base = service
         .create_base(name)
         .await
-        .map_err(|e| ServerFnError::new(format!("Base creation failed : {e}")))?;
+        .map_err(|e| ServerFnError::new(format!("{e}")))?;
     let duration = start.elapsed().as_millis();
     println!("[create_base] finished in {}ms", duration);
     Ok(UserBase {
@@ -77,12 +156,12 @@ pub fn DashboardPage() -> impl IntoView {
     let (refresh_count, set_refresh_count) = signal(0);
     let bases = Resource::new(
         move || refresh_count.get(),
-        |_| async move { get_user_bases().await.unwrap() },
+        |_| async move { get_user_bases().await },
     );
 
     let create_base_action = Action::new(|name: &String| {
         let name = name.clone();
-        async move { create_base(name).await.unwrap() }
+        async move { create_base(name).await }
     });
 
     Effect::new(move |_| {
@@ -120,54 +199,85 @@ pub fn DashboardPage() -> impl IntoView {
                         // returns error when there is one
                         // and also fix the issue where the dialog is not closed when using the +
                         // btn for some reason
-                        <Dialog>
-                            <DialogTrigger>
-                                {move || {
-                                    if create_base_action.pending().get() {
-                                        view! { <Lock /> }.into_any()
-                                    } else {
-                                        view! { <Plus /> }.into_any()
-                                    }
-                                }}
-                            </DialogTrigger>
-
-                            <DialogContent class="sm:max-w-[425px]">
-                                <DialogBody>
-                                    <DialogHeader>
-                                        <DialogTitle>"Create a Base!"</DialogTitle>
-
-                                        <DialogDescription>
-                                            "To create a base, you first need a nice name, what could it be :3 ?"
-                                        </DialogDescription>
-                                    </DialogHeader>
-
-                                    <div class="flex flex-col gap-4 justify-center">
-                                        <div class="flex flex-col gap-2">
-                                            <Label html_for="name-1">Name</Label>
-                                            <Input
-                                                on:input=move |ev| {
-                                                    set_name.set(event_target_value(&ev));
-                                                }
-                                                prop:value=move || name.get()
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <DialogFooter>
-                                        <DialogClose class="w-full sm:w-fit">"Cancel"</DialogClose>
-                                        <Button
-                                            attr:r#type="button"
-                                            on:click=move |_| {
-                                                let current_name = name.get();
-                                                create_base_action.dispatch(current_name);
-                                            }
-                                        >
-                                            "Create"
-                                        </Button>
-                                    </DialogFooter>
-                                </DialogBody>
-                            </DialogContent>
-                        </Dialog>
+                        <CreateBaseDialog
+                            title=move || {
+                                if create_base_action.pending().get() {
+                                    view! { <Lock /> }.into_any()
+                                } else {
+                                    view! { <Plus /> }.into_any()
+                                }
+                            }
+                            create_action=create_base_action
+                        />
+                        //<Dialog>
+                        //    <DialogTrigger>
+                        //        {move || {
+                        //            if create_base_action.pending().get() {
+                        //                view! { <Lock /> }.into_any()
+                        //            } else {
+                        //                view! { <Plus /> }.into_any()
+                        //            }
+                        //        }}
+                        //    </DialogTrigger>
+                        //
+                        //    <DialogContent class="sm:max-w-[425px]">
+                        //        <DialogBody>
+                        //            <DialogHeader>
+                        //                <DialogTitle>"Create a Base!"</DialogTitle>
+                        //
+                        //                <DialogDescription>
+                        //                    {move || {
+                        //                        create_base_action
+                        //                            .value()
+                        //                            .get()
+                        //                            .and_then(|res| {
+                        //                                if let Err(e) = res {
+                        //                                    Some(
+                        //                                        view! {
+                        //                                            <p class="text-destructive text-sm font-medium">
+                        //                                                {e.to_string()}
+                        //                                            </p>
+                        //                                        }
+                        //                                            .into_any(),
+                        //                                    )
+                        //                                } else {
+                        //                                    Some(
+                        //                                        "To create a base, you first need a nice name, what could it be :3 ?"
+                        //                                            .into_any(),
+                        //                                    )
+                        //                                }
+                        //                            })
+                        //                    }}
+                        //                </DialogDescription>
+                        //            </DialogHeader>
+                        //
+                        //            <div class="flex flex-col gap-4 justify-center">
+                        //                <div class="flex flex-col gap-2">
+                        //                    <Label html_for="name-1">Name</Label>
+                        //                    <Input
+                        //                        on:input=move |ev| {
+                        //                            set_name.set(event_target_value(&ev));
+                        //                        }
+                        //                        prop:value=move || name.get()
+                        //                    />
+                        //                </div>
+                        //            </div>
+                        //
+                        //            <DialogFooter>
+                        //                <DialogClose class="w-full sm:w-fit">"Cancel"</DialogClose>
+                        //                <Button
+                        //                    attr:r#type="button"
+                        //                    on:click=move |_| {
+                        //                        create_base_action.dispatch(name.get());
+                        //                        set_name.set("".to_string());
+                        //                    }
+                        //                >
+                        //                    "Create"
+                        //                </Button>
+                        //            </DialogFooter>
+                        //        </DialogBody>
+                        //    </DialogContent>
+                        //</Dialog>
                     </div>
 
                     <Suspense fallback=move || {
@@ -175,7 +285,7 @@ pub fn DashboardPage() -> impl IntoView {
                     }>
                         {move || Suspend::new(async move {
                             match bases.get() {
-                                Some(list) if list.is_empty() => {
+                                Some(Ok(list)) if list.is_empty() => {
                                     view! {
                                         <Empty class="flex-1 flex items-center justify-center">
                                             <EmptyHeader>
@@ -184,7 +294,28 @@ pub fn DashboardPage() -> impl IntoView {
                                                 </EmptyMedia>
                                                 <EmptyTitle>"No Base Yet"</EmptyTitle>
                                                 <EmptyDescription>
-                                                    "You haven't created any bases yet. Get started by creating your first base! :3"
+                                                    {move || {
+                                                        create_base_action
+                                                            .value()
+                                                            .get()
+                                                            .and_then(|res| {
+                                                                if let Err(e) = res {
+                                                                    Some(
+                                                                        view! {
+                                                                            <p class="text-destructive text-sm font-medium">
+                                                                                {e.to_string()}
+                                                                            </p>
+                                                                        }
+                                                                            .into_any(),
+                                                                    )
+                                                                } else {
+                                                                    Some(
+                                                                        "You haven't created any bases yet. Get started by creating your first base! :3"
+                                                                            .into_any(),
+                                                                    )
+                                                                }
+                                                            })
+                                                    }}
                                                 </EmptyDescription>
                                             </EmptyHeader>
 
@@ -198,7 +329,28 @@ pub fn DashboardPage() -> impl IntoView {
                                                                     <DialogTitle>"Create a Base!"</DialogTitle>
 
                                                                     <DialogDescription>
-                                                                        "To create a base, you first need a nice name, what could it be :3 ?"
+                                                                        {move || {
+                                                                            create_base_action
+                                                                                .value()
+                                                                                .get()
+                                                                                .and_then(|res| {
+                                                                                    if let Err(e) = res {
+                                                                                        Some(
+                                                                                            view! {
+                                                                                                <p class="text-destructive text-sm font-medium">
+                                                                                                    {e.to_string()}
+                                                                                                </p>
+                                                                                            }
+                                                                                                .into_any(),
+                                                                                        )
+                                                                                    } else {
+                                                                                        Some(
+                                                                                            "To create a base, you first need a nice name, what could it be :3 ?"
+                                                                                                .into_any(),
+                                                                                        )
+                                                                                    }
+                                                                                })
+                                                                        }}
                                                                     </DialogDescription>
                                                                 </DialogHeader>
 
@@ -219,8 +371,8 @@ pub fn DashboardPage() -> impl IntoView {
                                                                     <Button
                                                                         attr:r#type="button"
                                                                         on:click=move |_| {
-                                                                            let current_name = name.get();
-                                                                            create_base_action.dispatch(current_name);
+                                                                            create_base_action.dispatch(name.get());
+                                                                            set_name.set("".to_string());
                                                                         }
                                                                     >
                                                                         "Create"
@@ -252,14 +404,13 @@ pub fn DashboardPage() -> impl IntoView {
                                     view! {
                                         <div class="grid grid-cols-3 gap-3">
                                             {list
+                                                .unwrap()
                                                 .into_iter()
                                                 .map(|base| {
                                                     view! {
                                                         <div class="p-2 border rounded-lg bg-card">
                                                             <span class="font-bold">{base.name}</span>
-                                                            <span class="text-sm opacity-70 ml-2">
-                                                                "(" {base.id} ")"
-                                                            </span>
+                                                            <span class="text-sm opacity-70 ml-2">{base.id}</span>
                                                             <p class="text-xs text-muted-foreground">
                                                                 "Owner: " {base.owner_name}
                                                             </p>
@@ -280,15 +431,5 @@ pub fn DashboardPage() -> impl IntoView {
                 </div>
             </div>
         </div>
-    }
-}
-
-trait WindowExt {
-    fn confirm_prompt(&self, message: &str) -> Option<String>;
-}
-
-impl WindowExt for web_sys::Window {
-    fn confirm_prompt(&self, message: &str) -> Option<String> {
-        self.prompt_with_message(message).ok().flatten()
     }
 }

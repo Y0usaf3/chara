@@ -17,6 +17,7 @@ use crate::HCAUTH;
 use crate::db::*;
 use crate::models;
 use crate::models::*;
+use crate::service::approved;
 use crate::service::base::*;
 use crate::service::crypter::*;
 use crate::service::errors::{AuthError, BaseError, PermissionError, UserError};
@@ -265,7 +266,11 @@ impl UserService {
         Ok(value.unwrap_or_default().value())
     }
 
+    // NOTE: me when i dont check the name before doing anything :heavysob:
     pub async fn create_base(&self, name: String) -> Result<Base, Irror> {
+        if !approved(&name) {
+            return Err(Irror::Db("the name is not approved".to_string()));
+        };
         let base = InsertBase {
             name,
             owner: self.user_record_id.clone(),
