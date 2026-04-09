@@ -11,7 +11,7 @@ pub struct Session {
     pub user_agent: String,
     pub created_at: Option<Datetime>,
     pub expires_at: Option<Datetime>, // make surrealdb drop the session if it expires
-    pub last_user_to: Option<Datetime>,
+    pub last_used_to: Option<Datetime>,
 }
 
 #[derive(SurrealValue)]
@@ -33,7 +33,7 @@ impl Session {
             user_agent: insert.user_agent,
             created_at: None,
             expires_at: None, // hardened expiration :p
-            last_user_to: None,
+            last_used_to: None,
             user: insert.user,
         }
     }

@@ -26,12 +26,12 @@ VALUE string::trim($value)
 ASSERT string::trim($value) != "";
 DEFINE FIELD OVERWRITE email ON TABLE user TYPE string
 ASSERT string::is_email($value) 
-VALUE string::lowercase($value);
+VALUE string::lowercase($value)
 PERMISSIONS FOR update NONE;
 DEFINE FIELD OVERWRITE role ON TABLE user TYPE string 
 DEFAULT 'user'
 VALUE string::lowercase(string::trim($value))
-ASSERT $input INSIDE ['admin', 'user', 'guest']
+ASSERT $value INSIDE ['admin', 'user', 'guest']
 PERMISSIONS 
   FOR create WHERE false
   FOR update WHERE $user.role == 'admin';
