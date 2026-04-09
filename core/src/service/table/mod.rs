@@ -2,6 +2,8 @@ use crate::db::*;
 use crate::models::*;
 use crate::service::errors::TableError;
 
+// TODO: gotta work here :sob:
+
 #[derive(Debug, Clone)]
 pub struct TableService {
     pub table: Table,

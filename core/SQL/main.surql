@@ -18,14 +18,22 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE user TYPE datetime
 VALUE time::now();
 DEFINE FIELD OVERWRITE is_deleted ON TABLE user TYPE bool 
 DEFAULT false;
-DEFINE FIELD OVERWRITE first_name ON TABLE user TYPE string; -- uh i dont remember writing this
-DEFINE FIELD OVERWRITE last_name ON TABLE user TYPE string ;
+DEFINE FIELD OVERWRITE first_name ON TABLE user TYPE string
+VALUE string::trim($value) 
+ASSERT string::trim($value) != "";-- uh i dont remember writing this
+DEFINE FIELD OVERWRITE last_name ON TABLE user TYPE string
+VALUE string::trim($value) 
+ASSERT string::trim($value) != "";
 DEFINE FIELD OVERWRITE email ON TABLE user TYPE string
 ASSERT string::is_email($value) 
 PERMISSIONS FOR update NONE;
 DEFINE FIELD OVERWRITE role ON TABLE user TYPE string 
 DEFAULT 'user'
-ASSERT $value INSIDE ['admin', 'user', 'guest'];
+VALUE string::lowercase(string::trim($value))
+ASSERT $input INSIDE ['admin', 'user', 'guest']
+PERMISSIONS 
+  FOR create WHERE false
+  FOR update WHERE $user.role == 'admin';
 
 -- SESSION 
 DEFINE TABLE OVERWRITE session SCHEMAFULL
@@ -58,9 +66,15 @@ VALUE time::now();
 DEFINE FIELD OVERWRITE is_deleted ON TABLE identity TYPE bool 
 DEFAULT false;
 DEFINE FIELD OVERWRITE user ON TABLE identity TYPE record<user>;
-DEFINE FIELD OVERWRITE external_id ON TABLE identity TYPE string;
-DEFINE FIELD OVERWRITE access_token ON TABLE identity TYPE string;
-DEFINE FIELD OVERWRITE refresh_token ON TABLE identity TYPE string;
+DEFINE FIELD OVERWRITE external_id ON TABLE identity TYPE string
+VALUE string::trim($value) 
+ASSERT string::trim($value) != "";
+DEFINE FIELD OVERWRITE access_token ON TABLE identity TYPE string
+VALUE string::trim($value) 
+ASSERT string::trim($value) != "";
+DEFINE FIELD OVERWRITE refresh_token ON TABLE identity TYPE string
+VALUE string::trim($value) 
+ASSERT string::trim($value) != "";
 DEFINE FIELD OVERWRITE expires_at ON TABLE identity TYPE datetime;
 DEFINE INDEX OVERWRITE user_unique ON TABLE identity FIELDS user UNIQUE;
 DEFINE INDEX OVERWRITE external_id_unique ON TABLE identity FIELDS external_id UNIQUE;
@@ -84,7 +98,9 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE base TYPE datetime
 VALUE time::now();
 DEFINE FIELD OVERWRITE is_deleted ON TABLE base TYPE bool 
 DEFAULT false;
-DEFINE FIELD OVERWRITE name ON TABLE base TYPE string;
+DEFINE FIELD OVERWRITE name ON TABLE base TYPE string
+VALUE string::trim($value) 
+ASSERT string::trim($value) != "";
 DEFINE FIELD OVERWRITE owner ON TABLE base TYPE record<user>;
 
 -- TABLE 
@@ -108,7 +124,9 @@ DEFINE FIELD OVERWRITE updated_at ON TABLE table TYPE datetime
 VALUE time::now();
 DEFINE FIELD OVERWRITE is_deleted ON TABLE table TYPE bool 
 DEFAULT false;
-DEFINE FIELD OVERWRITE name ON TABLE table TYPE string;
+DEFINE FIELD OVERWRITE name ON TABLE table TYPE string
+VALUE string::trim($value) 
+ASSERT string::trim($value) != "";
 DEFINE FIELD OVERWRITE base ON TABLE table TYPE record<base>;
 
 
@@ -137,7 +155,9 @@ DEFINE FIELD OVERWRITE is_primary ON TABLE field TYPE bool
 DEFAULT true;
 DEFINE FIELD OVERWRITE is_nullable ON TABLE field TYPE bool;
 DEFINE FIELD OVERWRITE is_unique ON TABLE field TYPE bool;
-DEFINE FIELD OVERWRITE name ON TABLE field TYPE string;
+DEFINE FIELD OVERWRITE name ON TABLE field TYPE string
+VALUE string::trim($value) 
+ASSERT string::trim($value) != "";
 DEFINE FIELD OVERWRITE order ON TABLE field TYPE int;
 DEFINE FIELD OVERWRITE description ON TABLE field TYPE option<string>;
 DEFINE FIELD OVERWRITE config ON TABLE field TYPE object;

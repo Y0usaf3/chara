@@ -25,6 +25,7 @@ use base64::Engine;
 use base64::engine::general_purpose;
 use chrono::{DateTime, Utc};
 use rand::RngExt;
+use std::net::IpAddr;
 use std::time::{Duration, SystemTime};
 use surrealdb::opt::PatchOp;
 use surrealdb::types::SurrealValue;
@@ -268,9 +269,7 @@ impl UserService {
 
     // NOTE: me when i dont check the name before doing anything :heavysob:
     pub async fn create_base(&self, name: String) -> Result<Base, Irror> {
-        if !approved(&name) {
-            return Err(Irror::Db("the name is not approved".to_string()));
-        };
+        approved(&name)?;
         let base = InsertBase {
             name,
             owner: self.user_record_id.clone(),
@@ -314,6 +313,9 @@ impl UserService {
     }
 
     pub async fn create_session(&self, ip: String, agent: String) -> Result<String, Irror> {
+        if !validator::ValidateIp::validate_ip(&ip) {
+            return Err(Irror::Db("Invalid String".to_string()));
+        };
         let bytes: Vec<u8> = (0..32).map(|_| rand::rng().random()).collect();
         let random_token = general_purpose::STANDARD.encode(bytes);
         let session = models::InsertSession {
@@ -336,11 +338,8 @@ impl UserService {
             SELECT * FROM base 
             WHERE is_deleted = false 
             AND (
-                -- 1. User is the owner
                 owner = $user 
-                -- 2. User is a global admin
                 OR (SELECT VALUE role FROM $user)[0] == 'admin'
-                -- 3. User has 'View' (bit 2) permission via a relation
                 OR id IN (
                     SELECT VALUE out FROM can_access_base 
                     WHERE in = $user 

@@ -1,5 +1,6 @@
 use crate::db::*;
 use crate::models::*;
+use crate::service::approved;
 use crate::service::errors::BaseError;
 use crate::service::errors::TableError;
 use crate::service::table::TableService;
@@ -114,6 +115,7 @@ COMMIT TRANSACTION;
     }
 
     pub async fn create_table(&self, name: String) -> Result<Table, Irror> {
+        approved(&name)?;
         let mut res = DB.query("
             BEGIN TRANSACTION;
 
