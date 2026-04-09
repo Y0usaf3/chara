@@ -39,6 +39,18 @@ pub fn DashboardPage() -> impl IntoView {
         }
     });
 
+    let create_message = move || {
+        create_base_action.value().get().map(|res| {
+            if let Err(e) = res {
+                view! { <p class="text-destructive text-sm font-medium">{e.to_string()}</p> }
+                    .into_any()
+            } else {
+                view! { <p class="text-sm text-muted-foreground">"Base created successfully!"</p> }
+                    .into_any()
+            }
+        })
+    };
+
     view! {
         <div
             class:dark=move || theme.is_dark()
@@ -74,9 +86,7 @@ pub fn DashboardPage() -> impl IntoView {
                         />
                     </div>
 
-                    <Suspense fallback=move || {
-                        view! { <p>"Loading bases..."</p> }
-                    }>
+                    <Suspense>
                         {move || Suspend::new(async move {
                             match bases.get() {
                                 Some(Ok(list)) if list.is_empty() => {
@@ -88,24 +98,10 @@ pub fn DashboardPage() -> impl IntoView {
                                                 </EmptyMedia>
                                                 <EmptyTitle>"No Base Yet"</EmptyTitle>
                                                 <EmptyDescription>
-                                                    {move || {
-                                                        create_base_action
-                                                            .value()
-                                                            .get()
-                                                            .map(|res| {
-                                                                if let Err(e) = res {
-                                                                    view! {
-                                                                        <p class="text-destructive text-sm font-medium">
-                                                                            {e.to_string()}
-                                                                        </p>
-                                                                    }
-                                                                        .into_any()
-                                                                } else {
-                                                                    "You haven't created any bases yet. Get started by creating your first base! :3"
-                                                                        .into_any()
-                                                                }
-                                                            })
-                                                    }}
+                                                    "You haven't created any bases yet. Get started by creating your first base! :3"
+                                                </EmptyDescription>
+                                                <EmptyDescription>
+                                                    {move || create_message()}
                                                 </EmptyDescription>
                                             </EmptyHeader>
 
@@ -128,13 +124,13 @@ pub fn DashboardPage() -> impl IntoView {
                                                         <ArrowUpRight />
                                                     </a>
                                                 </Button>
+
                                             </EmptyContent>
                                         </Empty>
                                     }
                                         .into_any()
                                 }
                                 Some(list) => {
-
                                     view! {
                                         <div class="grid grid-cols-3 gap-3">
                                             {list

@@ -17,12 +17,37 @@ pub fn CreateBaseDialog(
     create_action: Action<String, Result<UserBase, ServerFnError>>,
 ) -> impl IntoView {
     let (name, set_name) = signal("".to_string());
+    let (create_message, set_create_message) = signal::<Option<Result<(), String>>>(None);
 
     Effect::new(move |_| {
-        if let Some(Ok(_)) = create_action.value().get() {
-            set_name.set("".to_string());
+        if let Some(res) = create_action.value().get() {
+            let status = match res {
+                Ok(_) => Ok(()),
+                Err(e) => Err(e.to_string()),
+            };
+
+            set_create_message.set(Some(status));
+
+            set_timeout(
+                move || {
+                    set_create_message.set(None);
+                },
+                std::time::Duration::from_secs(3),
+            );
         }
     });
+
+    //let create_message = move || {
+    //    create_action.value().get().map(|res| {
+    //        if let Err(e) = res {
+    //            view! { <p class="text-destructive text-sm font-medium">{e.to_string()}</p> }
+    //                .into_any()
+    //        } else {
+    //            view! { <p class="text-sm text-muted-foreground">"Base created successfully!"</p> }
+    //                .into_any()
+    //        }
+    //    })
+    //};
 
     view! {
         <Dialog>
@@ -31,26 +56,8 @@ pub fn CreateBaseDialog(
                 <DialogBody>
                     <DialogHeader>
                         <DialogTitle>"Create a Base!"</DialogTitle>
-
                         <DialogDescription>
-                            {move || {
-                                create_action
-                                    .value()
-                                    .get()
-                                    .map(|res| {
-                                        if let Err(e) = res {
-                                            view! {
-                                                <p class="text-destructive text-sm font-medium">
-                                                    {e.to_string()}
-                                                </p>
-                                            }
-                                                .into_any()
-                                        } else {
-                                            "To create a base, you first need a nice name, what could it be :3 ?"
-                                                .into_any()
-                                        }
-                                    })
-                            }}
+                            "To create a base, you first need a nice name, what could it be :3 ?"
                         </DialogDescription>
                     </DialogHeader>
 
@@ -79,6 +86,28 @@ pub fn CreateBaseDialog(
                             "Create"
                         </Button>
                     </DialogFooter>
+                    {move || {
+                        create_message
+                            .get()
+                            .map(|msg| {
+                                match msg {
+                                    Err(e) => {
+                                        view! {
+                                            <p class="text-destructive text-sm font-medium">{e}</p>
+                                        }
+                                            .into_any()
+                                    }
+                                    Ok(_) => {
+                                        view! {
+                                            <p class="text-sm text-muted-foreground">
+                                                "Base created successfully!"
+                                            </p>
+                                        }
+                                            .into_any()
+                                    }
+                                }
+                            })
+                    }}
                 </DialogBody>
             </DialogContent>
         </Dialog>
