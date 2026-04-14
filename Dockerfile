@@ -28,7 +28,7 @@ RUN rustup target add aarch64-unknown-linux-gnu
 ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
     CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
     CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++ \
-    PKG_CONFIG_ALLOW_CROSS=1
+    PKG_CONFIG_ALLOW_CROSS=1 \
     LEPTOS_BIN_TARGET_TRIPLE=aarch64-unknown-linux-gnu
 
 WORKDIR /app
