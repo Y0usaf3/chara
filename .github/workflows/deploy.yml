@@ -16,11 +16,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: testing secrets bc aaaaaaaa
-        run: echo "aaaaaaaaaa $SECRET_KEY"
-        env:
-          SECRET_KEY: ${{ secrets.COOLIFY_WEBHOOK }}
-
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:

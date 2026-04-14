@@ -19,6 +19,11 @@ ENV PATH="/root/.bun/bin:$PATH"
 RUN curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
 RUN cargo binstall cargo-leptos -y
 RUN rustup target add wasm32-unknown-unknown
+RUN rustup target add aarch64-unknown-linux-gnu
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+    CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc \
+    CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++ \
+    PKG_CONFIG_ALLOW_CROSS=1
 
 WORKDIR /app
 
@@ -27,7 +32,7 @@ RUN bun install
 
 COPY . .
 
-RUN CARGO_BUILD_JOBS=2 cargo leptos build --release -vv
+RUN cargo leptos build --release --bin-target aarch64-unknown-linux-gnu
 
 FROM debian:trixie-slim as runtime
 WORKDIR /app
@@ -40,7 +45,7 @@ COPY --from=builder /app/target/release/server /app/chara
 COPY --from=builder /app/target/site /app/site
 COPY --from=builder /app/Cargo.toml /app/
 
-RUN ls -R
+RUN echo | ls -R
 
 ENV RUST_LOG="info"
 ENV LEPTOS_SITE_ADDR="0.0.0.0:3000"
