@@ -2,7 +2,12 @@ FROM rust:1.92.0-trixie as builder
 
 RUN apt-get update && apt-get install -y \
     curl unzip clang pkg-config libssl-dev build-essential \
+    gcc-aarch64-linux-gnu g++-aarch64-linux-gnu \
     && rm -rf /var/lib/apt/lists/*
+
+RUN dpkg --add-architecture arm64 && \
+    apt-get update && \
+    apt-get install -y libssl-dev:arm64
 
 ENV NVM_DIR /root/.nvm
 RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash \
@@ -41,9 +46,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     openssl ca-certificates libgcc-s1 \
     && apt-get autoremove -y && apt-get clean -y && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/server /app/chara
+COPY --from=builder /app/target/aarch64-unknown-linux-gnu/release/server /app/chara
 COPY --from=builder /app/target/site /app/site
-COPY --from=builder /app/Cargo.toml /app/
 
 RUN echo | ls -R
 
@@ -52,4 +56,4 @@ ENV LEPTOS_SITE_ADDR="0.0.0.0:3000"
 ENV LEPTOS_SITE_ROOT="site"
 EXPOSE 3000
 
-CMD ["/app/server"]
+CMD ["/app/chara"]
