@@ -13,7 +13,6 @@ pub fn HomePage() -> impl IntoView {
             class="relative min-h-screen bg-[var(--background)] text-[var(--foreground)]"
             class:dark=move || theme.is_dark()
         >
-
             <div class="absolute top-4 right-4 p-2">
                 <ThemeToggle />
             </div>
@@ -27,7 +26,6 @@ pub fn HomePage() -> impl IntoView {
                     }>"OAuth with Hackclub Auth!"</Button>
                 </div>
             </div>
-
         </div>
     }
 }

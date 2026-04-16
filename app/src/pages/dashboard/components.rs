@@ -37,18 +37,6 @@ pub fn CreateBaseDialog(
         }
     });
 
-    //let create_message = move || {
-    //    create_action.value().get().map(|res| {
-    //        if let Err(e) = res {
-    //            view! { <p class="text-destructive text-sm font-medium">{e.to_string()}</p> }
-    //                .into_any()
-    //        } else {
-    //            view! { <p class="text-sm text-muted-foreground">"Base created successfully!"</p> }
-    //                .into_any()
-    //        }
-    //    })
-    //};
-
     view! {
         <Dialog>
             <DialogTrigger>{title}</DialogTrigger>

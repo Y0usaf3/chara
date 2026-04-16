@@ -1,4 +1,4 @@
-use leptos::{prelude::*, tachys::view::keyed::SerializableKey};
+use leptos::prelude::*;
 
 #[derive(serde::Deserialize, serde::Serialize, Clone)]
 pub struct UserBase {

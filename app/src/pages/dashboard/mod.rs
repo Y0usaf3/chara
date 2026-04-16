@@ -28,6 +28,12 @@ pub fn DashboardPage() -> impl IntoView {
         |_| async move { get_user_bases().await },
     );
 
+    Effect::new(move || {
+        if let Some(Err(_)) = bases.get() {
+            window().location().assign("/");
+        }
+    });
+
     let create_base_action = Action::new(|name: &String| {
         let name = name.clone();
         async move { create_base(name).await }
@@ -130,11 +136,10 @@ pub fn DashboardPage() -> impl IntoView {
                                     }
                                         .into_any()
                                 }
-                                Some(list) => {
+                                Some(Ok(list)) => {
                                     view! {
                                         <div class="grid grid-cols-3 gap-3">
                                             {list
-                                                .unwrap()
                                                 .into_iter()
                                                 .map(|base| {
                                                     view! {
@@ -151,6 +156,9 @@ pub fn DashboardPage() -> impl IntoView {
                                         </div>
                                     }
                                         .into_any()
+                                },
+                                Some(Err(_)) => {
+                                    view! { <p class="text-red-500">"Unauthentified ! you silly goober"</p> }.into_any()
                                 }
                                 _ => {
                                     view! { <p class="text-red-500">"Unknown error"</p> }.into_any()
