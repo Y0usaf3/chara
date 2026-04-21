@@ -25,6 +25,7 @@ pub static DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 //pub static DB: LazyLock<Surreal<Db>> = LazyLock::new(Surreal::init);
 
 pub async fn init() {
+    //let _ = DB.connect::<Mem>(()).await;
     DB.connect::<Ws>(env_required!("DB_URL")).await.unwrap();
     DB.signin(Root {
         username: env_required!("DB_USERNAME"),

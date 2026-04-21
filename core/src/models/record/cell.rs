@@ -52,10 +52,25 @@ pub enum CellError {
 
 #[derive(Debug, Clone, SurrealValue, PartialEq, Eq, Hash)]
 pub struct CellValue {
-    id: CellId,
-    created_at: Datetime,
-    updated_at: Datetime,
-    value: Value,
+    pub id: CellId,
+    pub created_at: Datetime,
+    pub updated_at: Datetime,
+    pub value: Value,
+}
+
+impl CellValue {
+    pub fn new(value: Value) -> Self {
+        use surrealdb::types::RecordId as Thing;
+        Self {
+            id: CellId(Thing {
+                table: "cell".into(),
+                key: uuid::Uuid::new_v4().to_string().into(),
+            }),
+            created_at: Datetime::from(chrono::Utc::now()),
+            updated_at: Datetime::from(chrono::Utc::now()),
+            value,
+        }
+    }
 }
 
 #[derive(Debug, Clone, SurrealValue, PartialEq, Eq, Hash)]

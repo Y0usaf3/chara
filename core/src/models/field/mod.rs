@@ -31,6 +31,26 @@ pub struct InsertField {
     pub config: FieldConfig,
 }
 
+impl InsertField {
+    pub fn new(
+        name: String,
+        config: FieldConfig,
+        is_primary: bool,
+        is_nullable: bool,
+        is_unique: bool,
+    ) -> Self {
+        Self {
+            name,
+            config,
+            is_primary,
+            is_nullable,
+            is_unique,
+            description: None,
+            order: 0,
+        }
+    }
+}
+
 pub struct FieldPatch {
     pub(crate) name: Option<String>,
     pub(crate) description: Option<String>,

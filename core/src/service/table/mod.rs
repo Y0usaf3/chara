@@ -28,6 +28,20 @@ pub struct FieldConfigFR {
     pub description: Option<String>,
 }
 
+pub struct PaginationParams {
+    pub offset: Option<u32>,
+    pub limit: Option<u32>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MigrationReport {
+    pub can_migrate: bool,
+    pub success_rate: f32,
+    pub affected_records: usize,
+    pub failed_records: usize,
+    pub warning: Option<String>,
+}
+
 impl TableService {
     pub async fn new(tablee: TableId, base: BaseId, user: UserId) -> Result<Self, Irror> {
         let mut res = DB.query("
@@ -59,7 +73,7 @@ impl TableService {
     pub async fn get_field_config(&self, field_id: FieldId) -> Result<FieldConfigFR, Irror> {
         let mut res = DB
         .query("
-            SELECT * FROM type::thing('field', $field) 
+            SELECT * FROM $field 
             WHERE 
                 table = $table_id AND 
                 table.base = $base_id AND 
@@ -181,5 +195,445 @@ impl TableService {
             .ok_or(Irror::Table(TableError::NotFound))?;
 
         Ok(Ok(updated))
+    }
+
+    pub async fn delete_field(&self, field: FieldId) -> Result<Field, Irror> {
+        let mut res = DB
+            .query(
+                "
+        LET $is_owner = (SELECT VALUE owner FROM $base_id)[0] == $user;
+        LET $has_table_edit = fn::can(
+            (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0], 
+            4
+        );
+
+        IF $is_owner OR $has_table_edit THEN
+            (
+                
+                UPDATE record SET cells = object::remove(cells, $field)
+                WHERE table = $table_id AND is_deleted = false;
+                
+                UPDATE type::thing('field', $field) SET 
+                    is_deleted = true,
+                    updated_at = time::now()
+            )
+        END;
+    ",
+            )
+            .bind(("user", self.user.clone()))
+            .bind(("base_id", self.base.clone()))
+            .bind(("table_id", self.table_record_id.clone()))
+            .bind(("field", field))
+            .await?;
+        dbg!(&res);
+
+        let deleted_field: Option<Field> = res.take(4)?;
+
+        match deleted_field {
+            Some(f) => Ok(f),
+            None => Err(Irror::Table(TableError::DeleteFailed)),
+        }
+    }
+
+    pub async fn get_record(&self, record_id: RecordId) -> Result<Record, Irror> {
+        let mut res = DB
+            .query(
+                "
+        SELECT * FROM type::thing('record', $record_id) 
+        WHERE 
+            table = $table_id AND 
+            is_deleted = false AND
+            fn::can(
+                (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0],
+                2
+            )
+    ",
+            )
+            .bind(("record_id", record_id))
+            .bind(("table_id", self.table_record_id.clone()))
+            .bind(("user", self.user.clone()))
+            .await?;
+        dbg!(&res);
+
+        let record: Option<Record> = res.take(0)?;
+
+        match record {
+            Some(r) => Ok(r),
+            None => Err(Irror::Table(TableError::NotFound)),
+        }
+    }
+
+    pub async fn list_records(
+        &self,
+        pagination_params: PaginationParams,
+    ) -> Result<Vec<Record>, Irror> {
+        let limit = pagination_params.limit.unwrap_or(50);
+        let skip = pagination_params.offset.unwrap_or(0);
+
+        let mut res = DB
+            .query(
+                "
+        SELECT * FROM record 
+        WHERE 
+            table = $table_id AND 
+            is_deleted = false AND
+            fn::can(
+                (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0],
+                2
+            )
+        LIMIT $limit
+        START $skip
+    ",
+            )
+            .bind(("table_id", self.table_record_id.clone()))
+            .bind(("user", self.user.clone()))
+            .bind(("limit", limit))
+            .bind(("skip", skip))
+            .await?;
+        dbg!(&res);
+
+        let records: Vec<Record> = res.take(0)?;
+
+        Ok(records)
+    }
+
+    pub async fn create_record(&self, record: InsertRecord) -> Result<Record, Irror> {
+        let record = Record::from_insert(record);
+
+        let mut res = DB
+            .query(
+                "
+        LET $has_table_edit = fn::can(
+            (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0], 
+            4
+        );
+
+        IF $has_table_edit THEN
+            (CREATE record SET 
+                table = $table_id,
+                cells = $data.cells,
+                is_deleted = false,
+                created_at = time::now(),
+                updated_at = time::now()
+            )
+        END;
+    ",
+            )
+            .bind(("user", self.user.clone()))
+            .bind(("table_id", self.table_record_id.clone()))
+            .bind(("data", record))
+            .await?;
+        dbg!(&res);
+
+        let created_record: Option<Record> = res.take(1)?;
+
+        match created_record {
+            Some(r) => Ok(r),
+            None => Err(Irror::Table(TableError::CreateFailed)),
+        }
+    }
+
+    pub async fn update_record(
+        &self,
+        record_id: RecordId,
+        patch: RecordPatch,
+    ) -> Result<Record, Irror> {
+        let mut perm_res = DB
+            .query(
+                "
+        SELECT VALUE fn::can(
+            (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0], 
+            4
+        )
+        ",
+            )
+            .bind(("table_id", self.table_record_id.clone()))
+            .bind(("user", self.user.clone()))
+            .await?;
+
+        let is_authorized: bool = perm_res.take::<Option<bool>>(0)?.unwrap_or(false);
+        if !is_authorized {
+            return Err(Irror::Table(TableError::Unauthorized));
+        }
+
+        // Merge changed cells into existing record
+        let merge_query = if let Some(ref changed_cells) = patch.changed_cells {
+            let mut cells_update = String::new();
+            for (i, (key, _)) in changed_cells.iter().enumerate() {
+                if i > 0 {
+                    cells_update.push_str(",");
+                }
+                cells_update.push_str(&format!("cells.{} = $cells[{}]", key, i));
+            }
+
+            format!(
+                "UPDATE type::thing('record', $record_id) SET {} , updated_at = time::now()",
+                cells_update
+            )
+        } else {
+            "UPDATE type::thing('record', $record_id) SET updated_at = time::now()".to_string()
+        };
+
+        let mut update_res = DB
+            .query(&merge_query)
+            .bind(("record_id", record_id))
+            .bind(("cells", patch.changed_cells.unwrap_or_default()))
+            .await?;
+
+        let updated: Option<Record> = update_res.take(0)?;
+
+        match updated {
+            Some(r) => Ok(r),
+            None => Err(Irror::Table(TableError::NotFound)),
+        }
+    }
+
+    pub async fn delete_record(&self, record_id: RecordId) -> Result<Record, Irror> {
+        let mut perm_res = DB
+            .query(
+                "
+        SELECT VALUE fn::can(
+            (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0], 
+            4
+        )
+        ",
+            )
+            .bind(("table_id", self.table_record_id.clone()))
+            .bind(("user", self.user.clone()))
+            .await?;
+
+        let is_authorized: bool = perm_res.take::<Option<bool>>(0)?.unwrap_or(false);
+        if !is_authorized {
+            return Err(Irror::Table(TableError::Unauthorized));
+        }
+
+        let mut res = DB
+            .query(
+                "
+        UPDATE type::thing('record', $record_id) SET 
+            is_deleted = true,
+            updated_at = time::now()
+        ",
+            )
+            .bind(("record_id", record_id))
+            .await?;
+        dbg!(&res);
+
+        let deleted_record: Option<Record> = res.take(0)?;
+
+        match deleted_record {
+            Some(r) => Ok(r),
+            None => Err(Irror::Table(TableError::NotFound)),
+        }
+    }
+
+    pub async fn check_migration(
+        &self,
+        field_id: FieldId,
+        target_type: FieldConfig,
+    ) -> Result<MigrationReport, Irror> {
+        let mut res = DB
+            .query(
+                "
+        LET $field = (SELECT * FROM type::thing('field', $field_id) 
+            WHERE table = $table_id AND is_deleted = false)[0];
+        
+        IF $field == null THEN
+            RETURN null;
+        END;
+        
+        -- Get all records for this table
+        LET $records = (SELECT VALUE cells[$field.name] FROM record 
+            WHERE table = $table_id AND is_deleted = false);
+        
+        LET $total = array::len($records);
+        
+        -- Try to convert each value
+        LET $conversions = $records.map(|$val| {
+            RETURN fn::can_convert($val, $target_type)
+        });
+        
+        LET $successful = array::filter($conversions, |$v| $v == true).length();
+        
+        RETURN {
+            total: $total,
+            successful: $successful
+        };
+    ",
+            )
+            .bind(("field_id", field_id))
+            .bind(("table_id", self.table_record_id.clone()))
+            .bind(("target_type", target_type.clone()))
+            .await?;
+        dbg!(&res);
+
+        let result: Option<serde_json::Value> = res.take(0)?;
+
+        match result {
+            Some(val) => {
+                let total = val["total"]
+                    .as_u64()
+                    .ok_or(Irror::Table(TableError::NotFound))?
+                    as usize;
+                let successful = val["successful"]
+                    .as_u64()
+                    .ok_or(Irror::Table(TableError::NotFound))?
+                    as usize;
+                let failed = total - successful;
+                let success_rate = if total == 0 {
+                    1.0
+                } else {
+                    successful as f32 / total as f32
+                };
+
+                let warning = if success_rate < 1.0 {
+                    Some(format!(
+                        "{} out of {} records will fail conversion",
+                        failed, total
+                    ))
+                } else {
+                    None
+                };
+
+                Ok(MigrationReport {
+                    can_migrate: success_rate > 0.5,
+                    success_rate,
+                    affected_records: total,
+                    failed_records: failed,
+                    warning,
+                })
+            }
+            None => Err(Irror::Table(TableError::NotFound)),
+        }
+    }
+
+    pub async fn migrate_field_type(
+        &self,
+        field_id: FieldId,
+        new_type: FieldConfig,
+    ) -> Result<Result<Field, String>, Irror> {
+        // Check permissions
+        let mut perm_res = DB
+            .query(
+                "
+        SELECT VALUE 
+            (SELECT VALUE owner FROM $base_id)[0] == $user OR
+            fn::can(
+                (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0], 
+                4
+            )
+        ",
+            )
+            .bind(("base_id", self.base.clone()))
+            .bind(("table_id", self.table_record_id.clone()))
+            .bind(("user", self.user.clone()))
+            .await?;
+
+        let is_authorized: bool = perm_res.take::<Option<bool>>(0)?.unwrap_or(false);
+        if !is_authorized {
+            return Err(Irror::Table(TableError::Unauthorized));
+        }
+
+        // Get current field
+        let mut field_res = DB
+            .query("SELECT * FROM type::thing('field', $field_id) WHERE table = $table_id")
+            .bind(("field_id", field_id.clone()))
+            .bind(("table_id", self.table_record_id.clone()))
+            .await?;
+
+        let current_field: Field = field_res
+            .take::<Option<Field>>(0)?
+            .ok_or(Irror::Table(TableError::NotFound))?;
+
+        let strategy = current_field.config.get_migration_strategy(&new_type);
+
+        match strategy {
+            MigrationStrategy::Safe => {
+                let mut update_res = DB
+                    .query(
+                        "
+                LET $field_name = (SELECT VALUE name FROM type::thing('field', $field_id))[0];
+                
+                -- Attempt to convert all values
+                UPDATE record 
+                SET cells[$field_name] = fn::convert_type(cells[$field_name], $new_type)
+                WHERE table = $table_id AND is_deleted = false;
+                
+                -- Update field config
+                UPDATE type::thing('field', $field_id) SET 
+                    config = $new_config,
+                    updated_at = time::now()
+            ",
+                    )
+                    .bind(("field_id", field_id))
+                    .bind(("table_id", self.table_record_id.clone()))
+                    .bind(("new_type", new_type))
+                    .await?;
+                dbg!(&update_res);
+
+                let updated: Option<Field> = update_res.take(2)?;
+
+                match updated {
+                    Some(f) => Ok(Ok(f)),
+                    None => Err(Irror::Table(TableError::UpdateFailed)),
+                }
+            }
+            MigrationStrategy::Risky => {
+                return Ok(Err(
+                    "Migration is risky. Use force_edit_config if you accept potential data loss."
+                        .to_string(),
+                ));
+            }
+            MigrationStrategy::Destructive => {
+                return Ok(Err(
+                "Migration is destructive and will cause data loss. Use force_edit_config if you accept this."
+                    .to_string(),
+            ));
+            }
+            MigrationStrategy::NoOp => return Ok(Err("No operation needed".to_string())),
+        }
+    }
+
+    pub async fn force_edit_config(
+        &self,
+        field_id: FieldId,
+        new_config: FieldConfig,
+    ) -> Result<Field, Irror> {
+        let mut perm_res = DB
+            .query(
+                "
+        SELECT VALUE (SELECT VALUE owner FROM $base_id)[0] == $user
+        ",
+            )
+            .bind(("base_id", self.base.clone()))
+            .bind(("user", self.user.clone()))
+            .await?;
+
+        let is_owner: bool = perm_res.take::<Option<bool>>(0)?.unwrap_or(false);
+        if !is_owner {
+            return Err(Irror::Table(TableError::Unauthorized));
+        }
+
+        let mut res = DB
+            .query(
+                "
+        UPDATE type::thing('field', $field_id) SET 
+            config = $new_config,
+            updated_at = time::now()
+        WHERE table = $table_id AND is_deleted = false
+    ",
+            )
+            .bind(("field_id", field_id))
+            .bind(("table_id", self.table_record_id.clone()))
+            .bind(("new_config", new_config))
+            .await?;
+        dbg!(&res);
+
+        let updated: Option<Field> = res.take(0)?;
+
+        match updated {
+            Some(f) => Ok(f),
+            None => Err(Irror::Table(TableError::NotFound)),
+        }
     }
 }

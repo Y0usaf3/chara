@@ -537,6 +537,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "bit"
+version = "0.0.1"
+dependencies = [
+ "surrealism",
+]
+
+[[package]]
 name = "bitflags"
 version = "2.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5733,6 +5740,42 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "surrealism"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "042be005c292ad2ea05231ee79b93db9e455fa1a3e9583fa5b4ee93c4d6a8c00"
+dependencies = [
+ "anyhow",
+ "surrealdb-types",
+ "surrealism-macros",
+ "surrealism-types",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "surrealism-macros"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "05e1e8da43934cf96fe29239766fff425ed3fc0085a8bec023cc20a422a01402"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "surrealism-types"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e83d84dc1afca3be84217ff74c0a385707bf5aeff5ee7f63ce24115edcc8f126"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes",
+ "surrealdb-types",
 ]
 
 [[package]]

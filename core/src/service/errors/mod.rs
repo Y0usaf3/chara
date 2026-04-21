@@ -61,6 +61,9 @@ pub enum TableError {
 
     #[error("This action is unauthorized")]
     Unauthorized,
+
+    #[error("Update failed")]
+    UpdateFailed,
 }
 
 #[derive(Error, Debug)]

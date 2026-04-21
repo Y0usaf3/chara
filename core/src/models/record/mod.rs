@@ -3,26 +3,38 @@ use std::collections::HashMap;
 use crate::models::ids::*;
 use surrealdb::types::{Datetime, SurrealValue};
 
-mod cell;
+pub mod cell;
 use crate::models::record::cell::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, SurrealValue)]
 pub struct Record {
-    id: Option<RecordId>,
-    created_at: Option<Datetime>,
-    updated_at: Option<Datetime>,
-    is_deleted: bool,
-    cells: HashMap<String, CellValue>, // K: FieldId
-    table: TableId,
+    pub id: Option<RecordId>,
+    pub created_at: Option<Datetime>,
+    pub updated_at: Option<Datetime>,
+    pub is_deleted: bool,
+    pub cells: HashMap<String, CellValue>, // K: FieldId
+    pub table: TableId,
 }
 
 pub struct InsertRecord {
-    pub(crate) table: TableId,
-    pub(crate) cells: HashMap<String, CellValue>,
+    pub table: TableId,
+    pub cells: HashMap<String, CellValue>,
 }
 
 pub struct RecordPatch {
-    pub(crate) changed_cells: Option<Vec<(String, CellValue)>>,
+    pub changed_cells: Option<Vec<(String, CellValue)>>,
+}
+
+impl InsertRecord {
+    pub fn new(table: TableId, cells: HashMap<String, CellValue>) -> Self {
+        Self { table, cells }
+    }
+}
+
+impl RecordPatch {
+    pub fn new(changed_cells: Option<Vec<(String, CellValue)>>) -> Self {
+        Self { changed_cells }
+    }
 }
 
 impl Record {

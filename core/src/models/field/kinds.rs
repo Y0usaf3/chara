@@ -17,6 +17,7 @@ pub enum FieldConfig {
 #[derive(SurrealValue, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TextConfig {
     SingleLine {
+        #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<String>,
         max_length: u16,
     },
@@ -31,9 +32,11 @@ pub enum TextConfig {
 #[derive(SurrealValue, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum NumberConfig {
     Number {
+        #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<usize>,
     },
     Decimal {
+        #[serde(skip_serializing_if = "Option::is_none")]
         default: Option<f32>,
         precision: u8,
     },
