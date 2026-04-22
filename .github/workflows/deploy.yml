@@ -34,8 +34,8 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/arm64
-          tags:  ghcr.io/y0usaf3/chara:latest
+          platforms: linux/amd64,linux/arm64
+          tags: ghcr.io/y0usaf3/chara:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -50,5 +50,3 @@ jobs:
           fi
           curl --request GET "$WEBHOOK_URL" \
                --header "Authorization: Bearer $COOLIFY_TOKEN"
-
-
