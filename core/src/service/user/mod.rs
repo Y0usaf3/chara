@@ -342,7 +342,7 @@ impl UserService {
                 OR id IN (
                     SELECT VALUE out FROM can_access_base 
                     WHERE in = $user 
-                    AND fn::can(perms, 2)
+                    AND mod::bit::can(perms, 2)
                 )
             );
             ",

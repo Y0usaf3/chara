@@ -1,7 +1,7 @@
 -- PERM FUNCTION
 -- ADMIN == 1 
 -- an admin can do anything! muhehe
-DEFINE FUNCTION OVERWRITE fn::can($mask: int, $flag: int) {
+DEFINE FUNCTION OVERWRITE mod::bit::can($mask: int, $flag: int) {
     RETURN (fn::bitwise::and($mask, 1) == 1) OR (fn::bitwise::and($mask, $flag) == $flag);
 };
 
@@ -70,12 +70,12 @@ DEFINE INDEX OVERWRITE external_id_unique ON TABLE identity FIELDS external_id U
 -- PERMISSIONS
 --   -- Use a custom variable $user instead of $auth
 --   FOR select WHERE is_deleted = false AND
---   fn::can(
+--   mod::bit::can(
 --       (SELECT VALUE perms FROM can_access_workspace WHERE in.user = $user AND out = $this.id)[0], 
 --       2
 --   )
 --   FOR update WHERE is_deleted = false AND
---   fn::can(
+--   mod::bit::can(
 --       (SELECT VALUE perms FROM can_access_workspace WHERE in.user = $user AND out = $this.id)[0], 
 --       4
 --   );
@@ -119,12 +119,12 @@ PERMISSIONS
   FOR select WHERE is_deleted = false AND (
     owner = $user OR 
     -- View
-    fn::can((SELECT VALUE perms FROM can_access_base WHERE in = $user AND out = $this.id)[0], 2)
+    mod::bit::can((SELECT VALUE perms FROM can_access_base WHERE in = $user AND out = $this.id)[0], 2)
   )
   FOR update WHERE is_deleted = false AND (
     owner = $user OR 
     -- Edit
-    fn::can((SELECT VALUE perms FROM can_access_base WHERE in = $user AND out = $this.id)[0], 4)
+    mod::bit::can((SELECT VALUE perms FROM can_access_base WHERE in = $user AND out = $this.id)[0], 4)
   )
   FOR delete WHERE owner = $user OR (SELECT VALUE role FROM $user WHERE id = $user)[0] == 'admin';
 DEFINE FIELD OVERWRITE created_at ON TABLE base TYPE datetime 
@@ -141,13 +141,13 @@ DEFINE TABLE OVERWRITE table SCHEMAFULL
 PERMISSIONS
   -- View (1 << 1) 
   FOR select WHERE is_deleted = false AND
-  fn::can(
+  mod::bit::can(
       (SELECT VALUE perm FROM can_access_table WHERE in = $user AND out = $this.id)[0], 
       2
   )
   -- Edit (1 << 2)
   FOR update WHERE is_deleted = false AND
-  fn::can(
+  mod::bit::can(
       (SELECT VALUE perm FROM can_access_table WHERE in = $user AND out = $this.id)[0], 
       4
   );
@@ -182,13 +182,13 @@ DEFINE TABLE OVERWRITE field SCHEMAFULL
 PERMISSIONS
   -- View (1 << 1) 
   FOR select WHERE is_deleted = false AND
-  fn::can(
+  mod::bit::can(
       (SELECT VALUE perm FROM can_access_field WHERE in = $user AND out = $this.id)[0], 
       2
   )
   -- Edit (1 << 2)
   FOR update WHERE is_deleted = false AND
-  fn::can(
+  mod::bit::can(
       (SELECT VALUE perm FROM can_access_field WHERE in = $user AND out = $this.id)[0], 
       4
   );
@@ -212,12 +212,12 @@ DEFINE FIELD OVERWRITE table ON TABLE field TYPE record<table>;
 DEFINE TABLE OVERWRITE record SCHEMAFULL
 PERMISSIONS
     FOR select WHERE is_deleted = false AND
-    fn::can(
+    mod::bit::can(
         (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $this.table)[0],
         2
     )
     FOR update WHERE is_deleted = false AND
-    fn::can(
+    mod::bit::can(
         (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $this.table)[0],
         4
     );

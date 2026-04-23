@@ -1,11 +1,3 @@
-DEFINE BUCKET OVERWRITE bucki BACKEND "file:/home/dietpi";
-DEFINE MODULE OVERWRITE mod::bit AS f"bucki:/chaira-bitwise_ops-0.0.1.surli";
-
--- copy pasted from @EllisVerhoest in his issue msg "https://github.com/surrealdb/surrealdb/issues/1335"
--- DEFINE FUNCTION OVERWRITE fn::bitwise::and($a: number, $b: number) {
---     RETURN function($a, $b) { return arguments[0] & arguments[1] }
--- };
-
 -- USER 
 DEFINE TABLE OVERWRITE user SCHEMAFULL;
 DEFINE FIELD OVERWRITE created_at ON TABLE user TYPE datetime 
