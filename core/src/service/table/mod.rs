@@ -93,7 +93,6 @@ impl TableService {
         .bind(("base_id", self.base.clone()))
         .bind(("user", self.user.clone()))
         .await?;
-        dbg!(&res);
 
         let field_config: Option<FieldConfigFR> = res.take(0)?;
 
@@ -134,7 +133,6 @@ impl TableService {
             .bind(("table_id", self.table_record_id.clone()))
             .bind(("data", field))
             .await?;
-        dbg!(&res);
 
         let created_field: Option<Field> = res.take(2)?;
 
@@ -227,7 +225,6 @@ impl TableService {
             .bind(("table_id", self.table_record_id.clone()))
             .bind(("field", field))
             .await?;
-        dbg!(&res);
 
         let deleted_field: Option<Field> = res.take(4)?;
 
@@ -241,13 +238,17 @@ impl TableService {
         let mut res = DB
             .query(
                 "
+        LET $is_owner = (SELECT VALUE owner FROM $table_id.base)[0] == $user;
         SELECT * FROM $record_id 
         WHERE 
             table = $table_id AND 
             is_deleted = false AND
-            mod::bit::can(
-                (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0],
-                2
+            (
+                $is_owner OR
+                mod::bit::can(
+                    (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0],
+                    2
+                )
             )
     ",
             )
@@ -255,9 +256,8 @@ impl TableService {
             .bind(("table_id", self.table_record_id.clone()))
             .bind(("user", self.user.clone()))
             .await?;
-        dbg!(&res);
 
-        let record: Option<Record> = res.take(0)?;
+        let record: Option<Record> = res.take(1)?;
 
         match record {
             Some(r) => Ok(r),
@@ -275,6 +275,7 @@ impl TableService {
         let mut res = DB
             .query(
                 "
+        LET $is_owner = (SELECT VALUE owner FROM $table_id.base)[0] == $user;
         LET $perms = (
             SELECT VALUE perms 
             FROM can_access_table 
@@ -285,7 +286,7 @@ impl TableService {
         WHERE 
             table = $table_id AND 
             is_deleted = false AND
-            mod::bit::can($perms, 2)
+            ($is_owner OR mod::bit::can($perms, 2))
         LIMIT $limit
         START $skip;",
             )
@@ -295,7 +296,7 @@ impl TableService {
             .bind(("skip", skip))
             .await?;
 
-        let records: Vec<Record> = res.take(0)?;
+        let records: Vec<Record> = res.take(2)?;
 
         Ok(records)
     }
@@ -306,12 +307,13 @@ impl TableService {
         let mut res = DB
             .query(
                 "
+        LET $is_owner = (SELECT VALUE owner FROM $table_id.base)[0] == $user;
         LET $has_table_edit = mod::bit::can(
             (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0], 
             4
         );
 
-        IF $has_table_edit THEN
+        IF $is_owner OR $has_table_edit THEN
             (CREATE record SET 
                 table = $table_id,
                 cells = $data.cells,
@@ -326,9 +328,8 @@ impl TableService {
             .bind(("table_id", self.table_record_id.clone()))
             .bind(("data", record))
             .await?;
-        dbg!(&res);
 
-        let created_record: Option<Record> = res.take(1)?;
+        let created_record: Option<Record> = res.take(2)?;
 
         match created_record {
             Some(r) => Ok(r),
@@ -341,53 +342,53 @@ impl TableService {
         record_id: RecordId,
         patch: RecordPatch,
     ) -> Result<Record, Irror> {
-        let mut perm_res = DB
-            .query(
-                "
-                (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0]; 
-        ",
-            )
-            .bind(("table_id", self.table_record_id.clone()))
-            .bind(("user", self.user.clone()))
-            .await?;
-
-        // TODO: make a function for rust to check permissions better than doing this
-
-        let perms: TablePermissions =
-            perm_res
-                .take::<Option<TablePermissions>>(0)?
-                .ok_or(Irror::Db(
-                    "something wrong happened with the permissions".to_string(),
-                ))?;
-        if perms.contains(TablePermission::Edit) || perms.contains(TablePermission::Admin) {
-            return Err(Irror::Table(TableError::Unauthorized));
-        }
-
-        // Merge changed cells into existing record
-        let merge_query = if let Some(ref changed_cells) = patch.changed_cells {
-            let mut cells_update = String::new();
-            for (i, (key, _)) in changed_cells.iter().enumerate() {
-                if i > 0 {
-                    cells_update.push(',');
-                }
-                cells_update.push_str(&format!("cells.{} = $cells[{}]", key, i));
+        let (cells_map, has_cells) = if let Some(changed_cells) = patch.changed_cells {
+            let mut map = std::collections::HashMap::new();
+            for (key, value) in changed_cells {
+                map.insert(key, value);
             }
-
-            format!(
-                "UPDATE $record_id SET {} , updated_at = time::now();",
-                cells_update
-            )
+            (Some(map), true)
         } else {
-            "UPDATE $record_id SET updated_at = time::now();".to_string()
+            (None, false)
         };
 
-        let mut update_res = DB
-            .query(&merge_query)
-            .bind(("record_id", record_id))
-            .bind(("cells", patch.changed_cells.unwrap_or_default()))
-            .await?;
+        let query_str = if has_cells {
+            "
+            BEGIN TRANSACTION;
+            LET $is_owner = (SELECT VALUE owner FROM $table_id.base)[0] == $user;
+            LET $perms = (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0] ?? 0;
+            IF $is_owner OR mod::bit::can($perms, 1) OR mod::bit::can($perms, 4) {
+                UPDATE $record_id SET cells = object::extend(cells, $cells), updated_at = time::now();
+            } ELSE {
+                THROW 'Unauthorized';
+            };
+            COMMIT TRANSACTION;
+            "
+        } else {
+            "
+            BEGIN TRANSACTION;
+            LET $is_owner = (SELECT VALUE owner FROM $table_id.base)[0] == $user;
+            LET $perms = (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0] ?? 0;
+            IF $is_owner OR mod::bit::can($perms, 1) OR mod::bit::can($perms, 4) {
+                UPDATE $record_id SET updated_at = time::now();
+            } ELSE {
+                THROW 'Unauthorized';
+            };
+            COMMIT TRANSACTION;
+            "
+        };
 
-        let updated: Option<Record> = update_res.take(0)?;
+        let mut query = DB.query(query_str)
+            .bind(("table_id", self.table_record_id.clone()))
+            .bind(("user", self.user.clone()))
+            .bind(("record_id", record_id));
+
+        if let Some(cells) = cells_map {
+            query = query.bind(("cells", cells));
+        }
+
+        let mut res = query.await?;
+        let updated: Option<Record> = res.take(3)?;
 
         match updated {
             Some(r) => Ok(r),
@@ -396,37 +397,26 @@ impl TableService {
     }
 
     pub async fn delete_record(&self, record_id: RecordId) -> Result<Record, Irror> {
-        let mut perm_res = DB
-            .query(
-                "
-        SELECT VALUE mod::bit::can(
-            (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0], 
-            4
-        )
-        ",
-            )
-            .bind(("table_id", self.table_record_id.clone()))
-            .bind(("user", self.user.clone()))
-            .await?;
+        let mut res = DB.query("
+            BEGIN TRANSACTION;
+            LET $is_owner = (SELECT VALUE owner FROM $table_id.base)[0] == $user;
+            LET $has_table_edit = mod::bit::can(
+                (SELECT VALUE perms FROM can_access_table WHERE in = $user AND out = $table_id)[0], 
+                4
+            );
+            IF $is_owner OR $has_table_edit {
+                UPDATE $record_id SET is_deleted = true, updated_at = time::now();
+            } ELSE {
+                THROW 'Unauthorized';
+            };
+            COMMIT TRANSACTION;
+        ")
+        .bind(("table_id", self.table_record_id.clone()))
+        .bind(("user", self.user.clone()))
+        .bind(("record_id", record_id))
+        .await?;
 
-        let is_authorized: bool = perm_res.take::<Option<bool>>(0)?.unwrap_or(false);
-        if !is_authorized {
-            return Err(Irror::Table(TableError::Unauthorized));
-        }
-
-        let mut res = DB
-            .query(
-                "
-        UPDATE $record_id SET 
-            is_deleted = true,
-            updated_at = time::now()
-        ",
-            )
-            .bind(("record_id", record_id))
-            .await?;
-        dbg!(&res);
-
-        let deleted_record: Option<Record> = res.take(0)?;
+        let deleted_record: Option<Record> = res.take(3)?;
 
         match deleted_record {
             Some(r) => Ok(r),
@@ -440,7 +430,7 @@ impl TableService {
         target_config: FieldConfig,
     ) -> Result<MigrationReport, Irror> {
         let mut field_res = DB
-            .query("SELECT name FROM $field_id WHERE table = $table_id")
+            .query("SELECT VALUE name FROM $field_id WHERE table = $table_id")
             .bind(("field_id", field_id))
             .bind(("table_id", self.table_record_id.clone()))
             .await?;
@@ -463,7 +453,6 @@ impl TableService {
                     successful += 1;
                 }
             } else {
-                // If cell is missing and target allows it, consider it "safe"
                 successful += 1;
             }
         }
@@ -595,7 +584,6 @@ impl TableService {
             .bind(("table_id", self.table_record_id.clone()))
             .bind(("new_config", new_config))
             .await?;
-        dbg!(&res);
 
         let updated: Option<Field> = res.take(0)?;
 

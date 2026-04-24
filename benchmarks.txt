@@ -1,0 +1,195 @@
+
+[ Crypter: Encrypt/Decrypt ]
+╭───────────┬──────────────────────────────────────────────────────────────╮
+│ Field     │ Value                                                        │
+├───────────┼──────────────────────────────────────────────────────────────┤
+│ Input     │ my-secret-token                                              │
+│ Encrypted │ fF46udNY2B3Rq/zOlTR4mqLnC+IVkDmxNvCFfGKHz/lf0hSQmbUvsWY6Ng== │
+│ Decrypted │ my-secret-token                                              │
+╰───────────┴──────────────────────────────────────────────────────────────╯
+Benchmark: 98.71µs
+
+
+[ UserService: Manual User Creation ]
+╭───────┬───────────────────────────╮
+│ Field │ Value                     │
+├───────┼───────────────────────────┤
+│ ID    │ user:n901ydfk8p02i4tg7bkg │
+│ Email │ test@example.com          │
+│ Role  │ Admin                     │
+╰───────┴───────────────────────────╯
+Benchmark: 1.212467ms
+
+
+[ UserService: Login ]
+╭────────────┬──────────────────╮
+│ Field      │ Value            │
+├────────────┼──────────────────┤
+│ Email      │ test@example.com │
+│ AuthMethod │ Session          │
+╰────────────┴──────────────────╯
+Benchmark: 1.834851ms
+
+
+[ UserService: is_admin ]
+╭──────────┬───────╮
+│ Field    │ Value │
+├──────────┼───────┤
+│ Is Admin │ true  │
+╰──────────┴───────╯
+Benchmark: 959.033µs
+
+
+[ UserService: create_base ]
+╭───────────┬───────────────────────────╮
+│ Field     │ Value                     │
+├───────────┼───────────────────────────┤
+│ Base Name │ TestBase                  │
+│ Base ID   │ base:jj0v2ty6z6ic2rpg75fi │
+╰───────────┴───────────────────────────╯
+Benchmark: 1.028658ms
+
+
+[ BaseService: new ]
+╭─────────┬───────────────────────────╮
+│ Field   │ Value                     │
+├─────────┼───────────────────────────┤
+│ Base ID │ base:jj0v2ty6z6ic2rpg75fi │
+╰─────────┴───────────────────────────╯
+Benchmark: 1.949249ms
+
+
+[ BaseService: create_table ]
+╭────────────┬────────────────────────────╮
+│ Field      │ Value                      │
+├────────────┼────────────────────────────┤
+│ Table Name │ test_table                 │
+│ Table ID   │ table:ba7jbdt5c00o8zh2c6g3 │
+╰────────────┴────────────────────────────╯
+Benchmark: 1.662645ms
+
+
+[ BaseService: open_table ]
+╭──────────┬────────────────────────────╮
+│ Field    │ Value                      │
+├──────────┼────────────────────────────┤
+│ Table ID │ table:ba7jbdt5c00o8zh2c6g3 │
+╰──────────┴────────────────────────────╯
+Benchmark: 1.025779ms
+
+
+[ TableService: create_field ]
+╭────────────┬────────────────────────────╮
+│ Field      │ Value                      │
+├────────────┼────────────────────────────┤
+│ Field Name │ test_field                 │
+│ Field ID   │ field:yiv1nhirxbah6gir17wb │
+╰────────────┴────────────────────────────╯
+Benchmark: 2.050066ms
+
+
+[ TableService: get_field_config ]
+╭────────────┬────────────╮
+│ Field      │ Value      │
+├────────────┼────────────┤
+│ Field Name │ test_field │
+╰────────────┴────────────╯
+Benchmark: 1.077059ms
+
+
+[ TableService: create_record ]
+╭───────────┬─────────────────────────────╮
+│ Field     │ Value                       │
+├───────────┼─────────────────────────────┤
+│ Record ID │ record:wkt051r0cetx1l7zgl2e │
+╰───────────┴─────────────────────────────╯
+Benchmark: 1.667384ms
+
+
+[ TableService: get_record ]
+╭────────────┬─────────────────────────────╮
+│ Field      │ Value                       │
+├────────────┼─────────────────────────────┤
+│ Record ID  │ record:wkt051r0cetx1l7zgl2e │
+│ test_field │ test value                  │
+╰────────────┴─────────────────────────────╯
+Benchmark: 1.119258ms
+
+
+[ TableService: update_record ]
+╭──────────────────────┬─────────────────────────────╮
+│ Field                │ Value                       │
+├──────────────────────┼─────────────────────────────┤
+│ Record ID            │ record:wkt051r0cetx1l7zgl2e │
+│ test_field (updated) │ updated value               │
+╰──────────────────────┴─────────────────────────────╯
+Benchmark: 2.060319ms
+
+╭───────────────╮
+│ test_field    │
+├───────────────┤
+│ updated value │
+╰───────────────╯
+Benchmark (list_records): 1.394272ms
+
+
+[ TableService: check_migration ]
+╭──────────────────┬───────╮
+│ Field            │ Value │
+├──────────────────┼───────┤
+│ Affected Records │ 1     │
+╰──────────────────┴───────╯
+Benchmark: 1.776138ms
+
+
+[ Misc: approved() ]
+╭──────────────┬───────────────────────────────╮
+│ Field        │ Value                         │
+├──────────────┼───────────────────────────────┤
+│ valid_name   │ Ok(())                        │
+│ empty        │ Err(Db("Invalid length"))     │
+│ too_long     │ Err(Db("Invalid length"))     │
+│ invalid_char │ Err(Db("Invalid characters")) │
+╰──────────────┴───────────────────────────────╯
+Benchmark: 645ns
+
+
+>>> STARTING SHITTON OF CHANGES STRESS TEST <<<
+Added 8 fields in 12.952245ms
+Inserted 1000 records in 1.727339038s
+Updated 1000 records in 3.109475411s
+
+>>> STRESS TEST FINAL RESULT (Sample of 10 records) <<<
+╭─────┬────────────────────────────────────────────────────────────────────────────────────────┬─────────────────────┬────────┬──────────────────┬────────┬─────────┬───────╮
+│ Age │ Bio                                                                                    │ Email               │ Growth │ Name             │ Rating │ Salary  │ Score │
+├─────┼────────────────────────────────────────────────────────────────────────────────────────┼─────────────────────┼────────┼──────────────────┼────────┼─────────┼───────┤
+│ 24  │ User 214 bio is quite long and contains interesting facts about this stress test user. │ user214@example.com │ 14     │ Updated User 214 │ 4      │ 22400 $ │ 428   │
+│ 49  │ User 179 bio is quite long and contains interesting facts about this stress test user. │ user179@example.com │ 79     │ Updated User 179 │ 5      │ 18900 $ │ 358   │
+│ 45  │ User 325 bio is quite long and contains interesting facts about this stress test user. │ user325@example.com │ 25     │ Updated User 325 │ 1      │ 33500 $ │ 650   │
+│ 21  │ User 541 bio is quite long and contains interesting facts about this stress test user. │ user541@example.com │ 41     │ Updated User 541 │ 1      │ 55100 $ │ 1082  │
+│ 49  │ User 749 bio is quite long and contains interesting facts about this stress test user. │ user749@example.com │ 49     │ Updated User 749 │ 5      │ 75900 $ │ 1498  │
+│ 32  │ User 792 bio is quite long and contains interesting facts about this stress test user. │ user792@example.com │ 92     │ Updated User 792 │ 0      │ 80200 $ │ 1584  │
+│ 24  │ User 724 bio is quite long and contains interesting facts about this stress test user. │ user724@example.com │ 24     │ Updated User 724 │ 4      │ 73400 $ │ 1448  │
+│ 29  │ User 609 bio is quite long and contains interesting facts about this stress test user. │ user609@example.com │ 9      │ Updated User 609 │ 3      │ 61900 $ │ 1218  │
+│ 34  │ User 464 bio is quite long and contains interesting facts about this stress test user. │ user464@example.com │ 64     │ Updated User 464 │ 2      │ 47400 $ │ 928   │
+│ 24  │ User 754 bio is quite long and contains interesting facts about this stress test user. │ user754@example.com │ 54     │ Updated User 754 │ 4      │ 76400 $ │ 1508  │
+╰─────┴────────────────────────────────────────────────────────────────────────────────────────┴─────────────────────┴────────┴──────────────────┴────────┴─────────┴───────╯
+
+[ Mega Stress Test Summary ]
+╭────────────────────────┬────────────╮
+│ Field                  │ Value      │
+├────────────────────────┼────────────┤
+│ Fields Added           │ 8          │
+│ Records Inserted       │ 1000       │
+│ Records Updated        │ 1000       │
+│ Avg Insert Latency     │ 1.727339ms │
+│ Avg Update Latency     │ 3.109475ms │
+│ List Latency (10 recs) │ 38.18498ms │
+╰────────────────────────┴────────────╯
+Benchmark: 4.888143687s
+
+
+--- Iterative Benchmarks ---
+Benchmark encrypt_token                  | Iterations: 100    | Total: 532.085µs    | Avg: 5.32µs
+Benchmark decrypt_token                  | Iterations: 100    | Total: 385.427µs    | Avg: 3.854µs
+Benchmark approved                       | Iterations: 100    | Total: 6.146µs      | Avg: 61ns

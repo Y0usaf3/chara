@@ -320,7 +320,7 @@ pub struct AutoNumberValue {
 impl AutoNumberValue {
     pub fn new(value: usize, prefix: Prefix) -> Self {
         let prefix_str = match prefix {
-            Prefix::Dot => '.',
+            Prefix::Dot => '•',
             Prefix::Star => '*',
         };
 

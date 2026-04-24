@@ -51,7 +51,7 @@ pub enum NumberConfig {
     Rating {
         max: usize, /* 0- 10 */
         icon_type: RatingIcon,
-        color: [u8; 6], // thats enough for colors
+        color: [u8; 3], // thats enough for colors
     },
 }
 

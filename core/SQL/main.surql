@@ -1,3 +1,6 @@
+DEFINE BUCKET OVERWRITE bucki BACKEND 'file:/home/yousafe/Dev/ext/chara/bit/'; 
+DEFINE MODULE OVERWRITE mod::bit AS f'bucki:/chaira-bitwise_ops-0.0.1.surli';
+
 -- USER 
 DEFINE TABLE OVERWRITE user SCHEMAFULL;
 DEFINE FIELD OVERWRITE created_at ON TABLE user TYPE datetime 
@@ -176,7 +179,7 @@ DEFAULT false;
 DEFINE FIELD OVERWRITE cells ON TABLE record TYPE object FLEXIBLE
 ASSERT type::is_object($value);
 DEFINE FIELD OVERWRITE table ON TABLE record TYPE record<table>;
-
+DEFINE INDEX table_status_idx ON TABLE record FIELDS table, is_deleted;
 
 -- USER |-relation-> BASE
 DEFINE TABLE OVERWRITE can_access_base TYPE RELATION 
