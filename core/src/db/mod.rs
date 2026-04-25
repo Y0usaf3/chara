@@ -45,5 +45,5 @@ pub async fn init() {
         .query(include_str!("../../SQL/main.surql"))
         .await
         .unwrap();
-    dbg!(res);
+    //dbg!(res);
 }

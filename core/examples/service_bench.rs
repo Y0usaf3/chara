@@ -124,7 +124,7 @@ async fn run_stress_test(
     );
 
     // 2. Insert records (100 records)
-    let num_records = 1000;
+    let num_records = 100000;
     let mut record_ids = Vec::new();
     let start_inserts = Instant::now();
     for i in 0..num_records {
@@ -204,7 +204,7 @@ async fn run_stress_test(
     let records = table_service
         .list_records(PaginationParams {
             offset: None,
-            limit: Some(300),
+            limit: Some(1000),
         })
         .await?;
     let duration_list = start_list.elapsed();
@@ -227,7 +227,7 @@ async fn run_stress_test(
                 format!("{:?}", duration_updates / num_records as u32),
             ),
             (
-                "List Latency (10 recs)".to_string(),
+                "List Latency (1000 recs)".to_string(),
                 format!("{:?}", duration_list),
             ),
         ],

@@ -5,57 +5,42 @@ use crate::components::{
         breadcrumb::{
             Breadcrumb, BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbSeparator,
         },
-        button::{Button, ButtonSize, ButtonVariant},
         empty::*,
         theme_toggle::ThemeToggle,
     },
 };
-use components::{BaseBox, CreateBaseDialog};
+use components::{CreateTableDialog, TableBox};
 use icons::{ArrowUpRight, FolderCode, Lock, Plus};
 use leptos::prelude::*;
-use server::{create_base, get_user_bases};
+use leptos_router::hooks::use_params_map;
+use server::{create_table_in_base, get_base_tables};
 
 mod components;
 pub mod server;
 
 #[component]
-pub fn DashboardPage() -> impl IntoView {
+pub fn BasePage() -> impl IntoView {
     let theme = ThemeMode::init();
+    let params = use_params_map();
+    let base_id = move || params.with(|p| p.get("id").unwrap_or_default());
 
     let (refresh_count, set_refresh_count) = signal(0);
-    let bases = Resource::new(
-        move || refresh_count.get(),
-        |_| async move { get_user_bases().await },
+    let tables = Resource::new(
+        move || (base_id(), refresh_count.get()),
+        |(id, _)| async move { get_base_tables(id).await },
     );
 
-    Effect::new(move || {
-        if let Some(Err(_)) = bases.get() {
-            window().location().assign("/").unwrap();
-        }
-    });
-
-    let create_base_action = Action::new(|name: &String| {
+    let create_table_action = Action::new(move |name: &String| {
         let name = name.clone();
-        async move { create_base(name).await }
+        let id = base_id();
+        async move { create_table_in_base(id, name).await }
     });
 
     Effect::new(move |_| {
-        if create_base_action.value().get().is_some() {
+        if create_table_action.value().get().is_some() {
             set_refresh_count.update(|n| *n += 1);
         }
     });
-
-    let create_message = move || {
-        create_base_action.value().get().map(|res| {
-            if let Err(e) = res {
-                view! { <p class="text-destructive text-sm font-medium">{e.to_string()}</p> }
-                    .into_any()
-            } else {
-                view! { <p class="text-sm text-muted-foreground">"Base created successfully!"</p> }
-                    .into_any()
-            }
-        })
-    };
 
     view! {
         <div
@@ -74,27 +59,33 @@ pub fn DashboardPage() -> impl IntoView {
                             <BreadcrumbItem>
                                 <BreadcrumbLink attr:href="/dashboard">"Dashboard"</BreadcrumbLink>
                             </BreadcrumbItem>
-
                             <BreadcrumbSeparator />
+                            <BreadcrumbItem>
+                                <BreadcrumbLink attr:href=format!(
+                                    "/base/{}",
+                                    base_id(),
+                                )>"Base"</BreadcrumbLink>
+                            </BreadcrumbItem>
                         </BreadcrumbList>
                     </Breadcrumb>
 
-                    <div class="flex gap-4 justify-end">
-                        <CreateBaseDialog
+                    <div class="flex gap-4 justify-between items-center">
+                        <h1 class="text-2xl font-bold">"Tables"</h1>
+                        <CreateTableDialog
                             title=move || {
-                                if create_base_action.pending().get() {
+                                if create_table_action.pending().get() {
                                     view! { <Lock /> }.into_any()
                                 } else {
                                     view! { <Plus /> }.into_any()
                                 }
                             }
-                            create_action=create_base_action
+                            create_action=create_table_action
                         />
                     </div>
 
                     <Suspense>
                         {move || Suspend::new(async move {
-                            match bases.get() {
+                            match tables.get() {
                                 Some(Ok(list)) if list.is_empty() => {
                                     view! {
                                         <Empty class="flex-1 flex items-center justify-center">
@@ -102,35 +93,19 @@ pub fn DashboardPage() -> impl IntoView {
                                                 <EmptyMedia variant=EmptyMediaVariant::Icon>
                                                     <FolderCode />
                                                 </EmptyMedia>
-                                                <EmptyTitle>"No Base Yet"</EmptyTitle>
+                                                <EmptyTitle>"No Table Yet"</EmptyTitle>
                                                 <EmptyDescription>
-                                                    "You haven't created any bases yet. Get started by creating your first base! :3"
-                                                </EmptyDescription>
-                                                <EmptyDescription>
-                                                    {move || create_message()}
+                                                    "This base is empty. Create your first table to start organizing data! :3"
                                                 </EmptyDescription>
                                             </EmptyHeader>
 
                                             <EmptyContent>
                                                 <div class="flex gap-2">
-                                                    <CreateBaseDialog
-                                                        title="Create".into_any()
-                                                        create_action=create_base_action
+                                                    <CreateTableDialog
+                                                        title="Create Table".into_any()
+                                                        create_action=create_table_action
                                                     />
-
                                                 </div>
-
-                                                <Button
-                                                    variant=ButtonVariant::Link
-                                                    size=ButtonSize::Sm
-                                                    class="text-muted-foreground"
-                                                >
-                                                    <a href="#" class="flex gap-1 items-center">
-                                                        <span>"Learn More"</span>
-                                                        <ArrowUpRight />
-                                                    </a>
-                                                </Button>
-
                                             </EmptyContent>
                                         </Empty>
                                     }
@@ -138,28 +113,26 @@ pub fn DashboardPage() -> impl IntoView {
                                 }
                                 Some(Ok(list)) => {
                                     view! {
-                                        <div class="grid grid-cols-3 gap-3">
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                             {list
                                                 .into_iter()
-                                                .map(|base| {
-                                                    view! { <BaseBox base=base /> }
+                                                .map(|table| {
+                                                    view! { <TableBox table=table /> }
                                                 })
                                                 .collect_view()}
                                         </div>
                                     }
                                         .into_any()
                                 }
-                                Some(Err(_)) => {
+                                Some(Err(e)) => {
                                     view! {
                                         <p class="text-red-500">
-                                            "Unauthentified ! you silly goober"
+                                            {format!("Error loading tables: {}", e)}
                                         </p>
                                     }
                                         .into_any()
                                 }
-                                _ => {
-                                    view! { <p class="text-red-500">"Unknown error"</p> }.into_any()
-                                }
+                                _ => view! { <p>"Loading..."</p> }.into_any(),
                             }
                         })}
                     </Suspense>

@@ -68,6 +68,8 @@ pub fn App() -> impl IntoView {
                 <Routes fallback=|| "Page not found.".into_view()>
                     <Route path=StaticSegment("") view=HomePage />
                     <Route path=path!("/dashboard") view=DashboardPage />
+                    <Route path=path!("/base/:id") view=BasePage />
+                    <Route path=path!("/base/tables/:id") view=TableViewPage />
                 </Routes>
             </main>
         </Router>

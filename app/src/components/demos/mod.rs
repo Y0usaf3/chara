@@ -5,3 +5,7 @@ pub mod demo_dropdown_menu_user_icon;
 pub mod demo_empty;
 pub mod demo_sonner;
 pub mod demo_button_disabled;
+pub mod demo_button_action;
+pub mod demo_context_menu;
+pub mod demo_data_table;
+pub mod demo_select;

@@ -9,12 +9,12 @@ use crate::components::ui::{
 };
 use leptos::prelude::*;
 
-use super::server::UserBase;
+use super::server::BaseTable;
 
 #[component]
-pub fn CreateBaseDialog(
+pub fn CreateTableDialog(
     title: impl IntoView + 'static,
-    create_action: Action<String, Result<UserBase, ServerFnError>>,
+    create_action: Action<String, Result<BaseTable, ServerFnError>>,
 ) -> impl IntoView {
     let name = RwSignal::new("".to_string());
     let (create_message, set_create_message) = signal::<Option<Result<(), String>>>(None);
@@ -43,9 +43,9 @@ pub fn CreateBaseDialog(
             <DialogContent class="sm:max-w-[425px]">
                 <DialogBody>
                     <DialogHeader>
-                        <DialogTitle>"Create a Base!"</DialogTitle>
+                        <DialogTitle>"Create a Table!"</DialogTitle>
                         <DialogDescription>
-                            "To create a base, you first need a nice name, what could it be :3 ?"
+                            "Give your table a name to get started."
                         </DialogDescription>
                     </DialogHeader>
 
@@ -83,7 +83,7 @@ pub fn CreateBaseDialog(
                                     Ok(_) => {
                                         view! {
                                             <p class="text-sm text-muted-foreground">
-                                                "Base created successfully!"
+                                                "Table created successfully!"
                                             </p>
                                         }
                                             .into_any()
@@ -98,16 +98,19 @@ pub fn CreateBaseDialog(
 }
 
 #[component]
-pub fn BaseBox(base: UserBase) -> impl IntoView {
+pub fn TableBox(table: BaseTable) -> impl IntoView {
     view! {
         <div
-            class="p-2 border rounded-lg bg-card"
+            class="p-4 border rounded-lg bg-card hover:bg-accent cursor-pointer transition-colors"
             on:click=move |_| {
-                window().location().assign(format!("/base/{}", base.id).as_str()).unwrap()
+                window()
+                    .location()
+                    .assign(format!("/base/tables/{}", table.id.clone()).as_str())
+                    .unwrap()
             }
         >
-            <span class="font-bold">{base.name}</span>
-            <p class="text-xs text-muted-foreground">"Owner: " {base.owner_name}</p>
+            <span class="font-bold text-lg">{table.name}</span>
+            <p class="text-xs text-muted-foreground">"ID: " {table.id.clone()}</p>
         </div>
     }
 }

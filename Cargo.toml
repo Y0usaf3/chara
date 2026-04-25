@@ -55,6 +55,7 @@ base64 = "0.22.1"
 strum = "0.28"
 strum_macros = "0.28"
 tracing = "0.1.44"
+js-sys = "0.3.95"
 
 # See https://github.com/leptos-rs/cargo-leptos for documentation of all the parameters.
 
