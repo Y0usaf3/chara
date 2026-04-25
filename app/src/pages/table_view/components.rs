@@ -416,9 +416,29 @@ pub fn CellInput(
     config: FieldConfig,
     #[prop(into)] on_change: Callback<String>,
 ) -> impl IntoView {
-    // Local state — initialize once from props and then let the user own it
-    let (val, set_val) = signal(initial_value);
+    let val = RwSignal::new(initial_value);
     let (is_editing, set_is_editing) = signal(false);
+
+    let input_ref = NodeRef::<leptos::html::Input>::new();
+    let textarea_ref = NodeRef::<leptos::html::Textarea>::new();
+
+    // Focus the element after it is inserted into the DOM
+    Effect::new(move |_| {
+        if is_editing.get() {
+            let input_ref = input_ref.clone();
+            let textarea_ref = textarea_ref.clone();
+
+            leptos::task::spawn_local(async move {
+                leptos::task::tick().await;
+
+                if let Some(el) = input_ref.get() {
+                    let _ = el.focus();
+                } else if let Some(el) = textarea_ref.get() {
+                    let _ = el.focus();
+                }
+            });
+        }
+    });
 
     let input_type = match &config {
         FieldConfig::Number(num_config) => match num_config {
@@ -468,7 +488,11 @@ pub fn CellInput(
     view! {
         <div
             class="w-full h-full min-h-[32px] flex items-center px-1"
-            on:click=move |_| set_is_editing.set(true)
+            on:click=move |ev: web_sys::MouseEvent| {
+                ev.stop_propagation();
+                set_is_editing.set(true);
+            }
+            on:pointerdown=move |ev: web_sys::PointerEvent| ev.stop_propagation()
         >
             {move || {
                 if is_editing.get() {
@@ -482,7 +506,7 @@ pub fn CellInput(
                                             default_value=val.get()
                                             on_change=Callback::new(move |new_val: Option<String>| {
                                                 if let Some(v) = new_val {
-                                                    set_val.set(v.clone());
+                                                    val.set(v.clone());
                                                     on_change.run(v);
                                                 }
                                                 set_is_editing.set(false);
@@ -497,9 +521,9 @@ pub fn CellInput(
                                                         .into_iter()
                                                         .map(|opt| {
                                                             view! {
-                                                                <SelectOption value=opt.label.clone()>
-                                                                    {opt.label}
-                                                                </SelectOption>
+                                                                <SelectOption value=opt
+                                                                    .label
+                                                                    .clone()>{opt.label}</SelectOption>
                                                             }
                                                         })
                                                         .collect_view()}
@@ -522,15 +546,18 @@ pub fn CellInput(
                         _ if is_long_text => {
                             view! {
                                 <textarea
-                                    autofocus
+                                    node_ref=textarea_ref
                                     class="bg-background border rounded p-1 w-full text-sm min-h-[60px] resize-y focus:outline-none focus:ring-1 focus:ring-primary"
-                                    on:click=move |ev| ev.stop_propagation()
-                                    on:input=move |ev| set_val.set(event_target_value(&ev))
+                                    on:pointerdown=move |ev: web_sys::PointerEvent| {
+                                        ev.stop_propagation()
+                                    }
+                                    prop:value=move || val.get()
+                                    on:input=move |ev| val.set(event_target_value(&ev))
+                                    on:focus=move |_| set_is_editing.set(true)
                                     on:blur=move |_| {
                                         on_change.run(val.get());
                                         set_is_editing.set(false);
                                     }
-                                    prop:value=move || val.get()
                                 />
                             }
                                 .into_any()
@@ -538,22 +565,25 @@ pub fn CellInput(
                         _ => {
                             view! {
                                 <input
-                                    autofocus
+                                    node_ref=input_ref
                                     type=input_type
                                     class="bg-background border rounded p-1 w-full text-sm h-8 focus:outline-none focus:ring-1 focus:ring-primary"
-                                    on:click=move |ev| ev.stop_propagation()
-                                    on:input=move |ev| set_val.set(event_target_value(&ev))
+                                    on:pointerdown=move |ev: web_sys::PointerEvent| {
+                                        ev.stop_propagation()
+                                    }
+                                    prop:value=move || val.get()
+                                    on:input=move |ev| val.set(event_target_value(&ev))
+                                    on:focus=move |_| set_is_editing.set(true)
                                     on:blur=move |_| {
                                         on_change.run(val.get());
                                         set_is_editing.set(false);
                                     }
-                                    on:keydown=move |ev| {
+                                    on:keydown=move |ev: web_sys::KeyboardEvent| {
                                         if ev.key() == "Enter" {
                                             on_change.run(val.get());
                                             set_is_editing.set(false);
                                         }
                                     }
-                                    prop:value=move || val.get()
                                 />
                             }
                                 .into_any()
