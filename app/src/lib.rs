@@ -61,7 +61,7 @@ pub fn App() -> impl IntoView {
     view! {
         <Stylesheet id="leptos" href="/pkg/chara.css" />
 
-        <Title text="ChairaTastic!" />
+        <Title text="Chaira" />
 
         <Router>
             <main>
@@ -69,7 +69,6 @@ pub fn App() -> impl IntoView {
                     <Route path=StaticSegment("") view=HomePage />
                     <Route path=path!("/dashboard") view=DashboardPage />
                     <Route path=path!("/base/:id") view=BasePage />
-                    <Route path=path!("/base/tables/:id") view=TableViewPage />
                 </Routes>
             </main>
         </Router>
