@@ -149,13 +149,7 @@ pub fn BasePage() -> impl IntoView {
                     {move || {
                         if let Some(table_id) = selected_table_id.get() {
                             let b_id = base_id();
-                            view! {
-                                <TableGrid
-                                    base_id=b_id
-                                    table_id=table_id
-                                />
-                            }
-                                .into_any()
+                            view! { <TableGrid base_id=b_id table_id=table_id /> }.into_any()
                         } else {
                             view! {
                                 <Suspense>
@@ -239,7 +233,9 @@ fn TableGrid(base_id: String, table_id: String) -> impl IntoView {
     );
 
     view! {
-        <Suspense fallback=|| view! { <p>"Loading table data..."</p> }>
+        <Suspense fallback=|| {
+            view! { <p>"Loading table data..."</p> }
+        }>
             {move || {
                 if let Some(Ok(data)) = table_data_res.get() {
                     let fields_sv = StoredValue::new(data.fields.clone());
@@ -248,7 +244,8 @@ fn TableGrid(base_id: String, table_id: String) -> impl IntoView {
                             <Table class="w-full max-w-none">
                                 <TableHeader>
                                     <TableRow>
-                                        {fields_sv.get_value()
+                                        {fields_sv
+                                            .get_value()
                                             .into_iter()
                                             .map(|field| {
                                                 view! {
@@ -273,7 +270,8 @@ fn TableGrid(base_id: String, table_id: String) -> impl IntoView {
                                             let record_cells = record.cells.clone();
                                             view! {
                                                 <TableRow>
-                                                    {fields_sv.get_value()
+                                                    {fields_sv
+                                                        .get_value()
                                                         .into_iter()
                                                         .map({
                                                             let record_cells = record_cells.clone();
@@ -285,9 +283,7 @@ fn TableGrid(base_id: String, table_id: String) -> impl IntoView {
                                                                     .unwrap_or_default();
                                                                 view! {
                                                                     <TableCell class="px-3 py-0 h-10 border-r last:border-r-0 overflow-hidden whitespace-nowrap text-ellipsis">
-                                                                        <div class="flex items-center h-full">
-                                                                            {value}
-                                                                        </div>
+                                                                        <div class="flex items-center h-full">{value}</div>
                                                                     </TableCell>
                                                                 }
                                                             }
@@ -300,7 +296,8 @@ fn TableGrid(base_id: String, table_id: String) -> impl IntoView {
                                 </TableBody>
                             </Table>
                         </TableWrapper>
-                    }.into_any()
+                    }
+                        .into_any()
                 } else if let Some(Err(e)) = table_data_res.get() {
                     view! { <p class="text-destructive">{format!("Error: {}", e)}</p> }.into_any()
                 } else {

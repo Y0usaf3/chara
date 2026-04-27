@@ -103,10 +103,7 @@ pub fn TableBox(table: BaseTable) -> impl IntoView {
         <div
             class="p-4 border rounded-lg bg-card hover:bg-accent cursor-pointer transition-colors"
             on:click=move |_| {
-                window()
-                    .location()
-                    .assign(format!("/base/{}", table.id.clone()).as_str())
-                    .unwrap()
+                window().location().assign(format!("/base/{}", table.id.clone()).as_str()).unwrap()
             }
         >
             <span class="font-bold text-lg">{table.name}</span>
