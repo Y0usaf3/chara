@@ -16,11 +16,13 @@ pub struct Record {
     pub table: TableId,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct InsertRecord {
     pub table: TableId,
     pub cells: HashMap<String, CellValue>,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RecordPatch {
     pub changed_cells: Option<Vec<(String, CellValue)>>,
 }

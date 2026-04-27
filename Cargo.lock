@@ -5213,6 +5213,7 @@ name = "server"
 version = "0.0.1"
 dependencies = [
  "app",
+ "async-trait",
  "axum",
  "axum-extra",
  "charac",
@@ -5221,6 +5222,7 @@ dependencies = [
  "leptos_axum",
  "log",
  "serde",
+ "serde_json",
  "simple_logger",
  "surrealdb",
  "time",

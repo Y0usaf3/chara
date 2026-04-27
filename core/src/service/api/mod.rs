@@ -10,14 +10,20 @@ impl ApiService {
     pub async fn get_user(token: String) -> Result<UserService, Irror> {
         let mut res = DB
             .query(
-                "SELECT user.* FROM api_token WHERE expires_at > time::now()   
-                    AND crypto::sha512($tokenn) == `token`;",
+                "SELECT VALUE user FROM api_token 
+             WHERE expires_at > time::now() 
+             AND crypto::sha512($tokenn) == token 
+             LIMIT 1;",
             )
             .bind(("tokenn", token))
             .await?;
-        let user: User = res
-            .take::<Option<User>>(0)?
+        let user_id: UserId = res
+            .take::<Option<UserId>>(0)?
             .ok_or(Irror::Api(ApiError::NotFound))?;
+        let user: User = DB
+            .select::<Option<User>>(user_id.0)
+            .await?
+            .ok_or(Irror::Api(ApiError::Unauthorized))?;
 
         Ok(UserService {
             user_record_id: user.id.clone().ok_or(Irror::Api(ApiError::Unauthorized))?,

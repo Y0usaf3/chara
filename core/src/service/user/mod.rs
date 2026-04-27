@@ -59,6 +59,30 @@ pub struct UserService {
     pub current_base: Option<BaseService>,
 }
 
+#[cfg(feature = "ssr")]
+impl<S> axum::extract::FromRequestParts<S> for UserService
+where
+    S: Send + Sync,
+{
+    type Rejection = Irror;
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        _state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        if let Some(auth_header) = parts.headers.get("Authorization")
+        {
+            if let Ok(auth_str) = auth_header.to_str() {
+                if let Some(token) = auth_str.strip_prefix("Bearer ") {
+                    return crate::service::api::ApiService::get_user(token.to_string()).await;
+                }
+            }
+        }
+
+        Err(Irror::Auth(AuthError::InvalidToken))
+    }
+}
+
 impl UserService {
     pub fn id(&self) -> &UserId {
         &self.user_record_id

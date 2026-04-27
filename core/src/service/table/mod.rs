@@ -330,6 +330,7 @@ impl TableService {
             .bind(("user", self.user.clone()))
             .bind(("limit", limit))
             .await?;
+        dbg!(&res);
 
         let fields: Vec<Field> = res.take(3)?;
         let records: Vec<Record> = res.take(4)?;

@@ -16,13 +16,15 @@ pub struct Table {
     pub name: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct InsertTable {
-    pub(crate) name: String,
+    pub name: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct TablePatch {
-    pub(crate) name: Option<String>,
-    pub(crate) is_deleted: Option<bool>,
+    pub name: Option<String>,
+    pub is_deleted: Option<bool>,
 }
 
 impl Table {

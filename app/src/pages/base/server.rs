@@ -117,9 +117,10 @@ pub async fn get_table_data(base_id: String, table_id: String) -> Result<TableDa
     use surrealdb::types::ToSql;
 
     let start = Instant::now();
-    
+
     let mut user_service = crate::get_authenticated_service().await?;
-    
+    dbg!(&base_id, &table_id);
+
     let base_record_id = RecordId::parse_simple(format!("base:{}", base_id.as_str()).as_str())
         .ok()
         .ok_or(ServerFnError::new("coudlnt parse the base id"))?;
@@ -130,7 +131,7 @@ pub async fn get_table_data(base_id: String, table_id: String) -> Result<TableDa
         .await
         .map_err(|e| ServerFnError::new(format!("Opening Base failed: {e:?}")))?;
 
-    let table_record_id = RecordId::parse_simple(format!("table:{}", table_id.as_str()).as_str())
+    let table_record_id = RecordId::parse_simple(table_id.as_str())
         .ok()
         .ok_or(ServerFnError::new("coudlnt parse the table id"))?;
     let table_id_typed = TableId(table_record_id);
@@ -143,7 +144,9 @@ pub async fn get_table_data(base_id: String, table_id: String) -> Result<TableDa
         .await
         .map_err(|e| ServerFnError::new(format!("{e:?}")))?;
 
-    let (fields, records) = table_service.get_full_data(Some(1000)).await
+    let (fields, records) = table_service
+        .get_full_data(None)
+        .await
         .map_err(|e| ServerFnError::new(format!("{e:?}")))?;
 
     let table_fields = fields
@@ -188,7 +191,7 @@ pub async fn update_record_cell(
 ) -> Result<(), ServerFnError> {
     use charac::db::DB;
     use charac::models::field::{Field, FieldConfig};
-    use charac::models::ids::{BaseId, TableId, RecordId as CharacRecordId};
+    use charac::models::ids::{BaseId, RecordId as CharacRecordId, TableId};
     use charac::models::record::RecordPatch;
     use charac::models::record::cell::CellValue;
     use std::time::Instant;
@@ -280,7 +283,7 @@ pub async fn delete_record(
     table_id: String,
     record_id: String,
 ) -> Result<(), ServerFnError> {
-    use charac::models::ids::{BaseId, TableId, RecordId as CharacRecordId};
+    use charac::models::ids::{BaseId, RecordId as CharacRecordId, TableId};
     use std::time::Instant;
     use surrealdb::types::RecordId;
 
@@ -326,7 +329,10 @@ pub async fn delete_record(
 }
 
 #[server]
-pub async fn create_record(base_id: String, table_id: String) -> Result<TableRecord, ServerFnError> {
+pub async fn create_record(
+    base_id: String,
+    table_id: String,
+) -> Result<TableRecord, ServerFnError> {
     use charac::models::ids::{BaseId, TableId};
     use charac::models::record::InsertRecord;
     use std::time::Instant;
@@ -377,9 +383,13 @@ pub async fn create_record(base_id: String, table_id: String) -> Result<TableRec
 }
 
 #[server]
-pub async fn create_field(base_id: String, table_id: String, name: String) -> Result<TableField, ServerFnError> {
+pub async fn create_field(
+    base_id: String,
+    table_id: String,
+    name: String,
+) -> Result<TableField, ServerFnError> {
+    use charac::models::field::{FieldConfig, InsertField, TextConfig};
     use charac::models::ids::{BaseId, TableId};
-    use charac::models::field::{InsertField, FieldConfig, TextConfig};
     use std::time::Instant;
     use surrealdb::types::{RecordId, ToSql};
 
@@ -410,14 +420,11 @@ pub async fn create_field(base_id: String, table_id: String, name: String) -> Re
         .await
         .map_err(|e| ServerFnError::new(format!("{e:?}")))?;
 
-    let config = FieldConfig::Text(TextConfig::SingleLine { default: None, max_length: 255 });
-    let insert_field = InsertField::new(
-        name.clone(),
-        config.clone(),
-        false,
-        true,
-        false
-    );
+    let config = FieldConfig::Text(TextConfig::SingleLine {
+        default: None,
+        max_length: 255,
+    });
+    let insert_field = InsertField::new(name.clone(), config.clone(), false, true, false);
 
     let field = table_service
         .create_field(insert_field)

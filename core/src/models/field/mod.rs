@@ -21,6 +21,7 @@ pub struct Field {
     pub description: Option<String>,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct InsertField {
     pub name: String,
     pub description: Option<String>,
@@ -51,14 +52,15 @@ impl InsertField {
     }
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FieldPatch {
-    pub(crate) name: Option<String>,
-    pub(crate) description: Option<String>,
-    pub(crate) is_primary: Option<bool>,
-    pub(crate) is_nullable: Option<bool>,
-    pub(crate) is_unique: Option<bool>,
-    pub(crate) order: Option<u32>,
-    pub(crate) config: Option<FieldConfig>,
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub is_primary: Option<bool>,
+    pub is_nullable: Option<bool>,
+    pub is_unique: Option<bool>,
+    pub order: Option<u32>,
+    pub config: Option<FieldConfig>,
 }
 
 impl Field {
