@@ -8,6 +8,7 @@ use crate::components::ui::{
     label::Label,
 };
 use leptos::prelude::*;
+use std::rc::Rc;
 
 use super::server::BaseTable;
 
@@ -16,21 +17,15 @@ pub fn CreateTableDialog(
     title: impl IntoView + 'static,
     create_action: Action<String, Result<BaseTable, ServerFnError>>,
 ) -> impl IntoView {
-    let name = RwSignal::new("".to_string());
-
-    let on_submit = move || {
-        let val = name.get_untracked();
-        if !val.is_empty() {
-            leptos::task::spawn_local(async move {
-                create_action.dispatch(val);
-            });
-            name.set("".to_string());
-        }
-    };
+    let name = ArcRwSignal::new("".to_string());
+    let name_effect = name.clone();
+    let name_input = name.clone();
+    let name_keydown = name.clone();
+    let name_click = name.clone();
 
     Effect::new(move |_| {
         if create_action.value().get().is_some() {
-            name.set("".to_string());
+            name_effect.set("".to_string());
         }
     });
 
@@ -45,17 +40,31 @@ pub fn CreateTableDialog(
                     </DialogHeader>
                     <div class="flex flex-col gap-4 py-4">
                         <Input
-                            bind_value=name
+                            bind_value=name_input
                             on:keydown=move |ev| {
                                 if ev.key() == "Enter" {
-                                    on_submit()
+                                    let val = name_keydown.get_untracked();
+                                    if !val.is_empty() {
+                                        leptos::task::spawn_local(async move {
+                                            create_action.dispatch(val);
+                                        });
+                                        name_keydown.set("".to_string());
+                                    }
                                 }
                             }
                         />
                     </div>
                     <DialogFooter>
                         <DialogClose class="w-full sm:w-fit">"Cancel"</DialogClose>
-                        <Button attr:r#type="button" on:click=move |_| on_submit()>
+                        <Button attr:r#type="button" on:click=move |_| {
+                            let val = name_click.get_untracked();
+                            if !val.is_empty() {
+                                leptos::task::spawn_local(async move {
+                                    create_action.dispatch(val);
+                                });
+                                name_click.set("".to_string());
+                            }
+                        }>
                             "Create"
                         </Button>
                     </DialogFooter>
@@ -70,15 +79,10 @@ pub fn CreateFieldDialog(
     title: impl IntoView + 'static,
     create_action: Action<String, Result<super::server::TableField, ServerFnError>>,
 ) -> impl IntoView {
-    let name = RwSignal::new("".to_string());
-
-    let on_submit = move || {
-        let val = name.get_untracked();
-        if !val.is_empty() {
-            create_action.dispatch(val);
-            name.set("".to_string());
-        }
-    };
+    let name = ArcRwSignal::new("".to_string());
+    let name_input = name.clone();
+    let name_keydown = name.clone();
+    let name_click = name.clone();
 
     view! {
         <Dialog>
@@ -91,10 +95,14 @@ pub fn CreateFieldDialog(
                     <div class="flex flex-col gap-4 py-4">
                         <Input
                             id="field-name"
-                            bind_value=name
+                            bind_value=name_input
                             on:keydown=move |ev| {
                                 if ev.key() == "Enter" {
-                                    on_submit()
+                                    let val = name_keydown.get_untracked();
+                                    if !val.is_empty() {
+                                        create_action.dispatch(val);
+                                        name_keydown.set("".to_string());
+                                    }
                                 }
                             }
                         />
@@ -103,7 +111,13 @@ pub fn CreateFieldDialog(
                         <DialogClose class="w-full sm:w-fit">"Cancel"</DialogClose>
                         <Button
                             attr:r#type="button"
-                            on:click=move |_| on_submit()
+                            on:click=move |_| {
+                                let val = name_click.get_untracked();
+                                if !val.is_empty() {
+                                    create_action.dispatch(val);
+                                    name_click.set("".to_string());
+                                }
+                            }
                         >
                             "Add Field"
                         </Button>
@@ -122,7 +136,10 @@ pub fn RenameFieldDialog(
     field_id: String,
 ) -> impl IntoView {
     let field_id_stored = StoredValue::new(field_id);
-    let name = RwSignal::new(current_name);
+    let name = ArcRwSignal::new(current_name);
+    let name_input = name.clone();
+    let name_keydown = name.clone();
+    let name_click = name.clone();
 
     view! {
         <Dialog>
@@ -139,10 +156,10 @@ pub fn RenameFieldDialog(
                             <Label html_for="rename-field-name">Name</Label>
                             <Input
                                 id="rename-field-name"
-                                bind_value=name
+                                bind_value=name_input
                                 on:keydown=move |ev| {
                                     if ev.key() == "Enter" {
-                                        let current_val = name.get_untracked();
+                                        let current_val = name_keydown.get_untracked();
                                         let id = field_id_stored.get_value();
                                         if !current_val.is_empty() {
                                             leptos::task::spawn_local(async move {
@@ -161,7 +178,7 @@ pub fn RenameFieldDialog(
                             attr:r#type="button"
                             class="w-full sm:w-[120px]"
                             on:click=move |_| {
-                                let current_val = name.get_untracked();
+                                let current_val = name_click.get_untracked();
                                 let id = field_id_stored.get_value();
                                 if !current_val.is_empty() {
                                     leptos::task::spawn_local(async move {
