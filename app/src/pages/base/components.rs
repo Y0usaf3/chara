@@ -46,13 +46,22 @@ pub fn FieldIcon(config: charac::models::field::FieldConfig) -> impl IntoView {
 #[component]
 pub fn EditableFieldHeader(
     field_id: String,
-    field_name: String,
-    config: charac::models::field::FieldConfig,
+    field_name: Signal<String>,
+    config: Signal<charac::models::field::FieldConfig>,
     rename_action: Action<(String, String), Result<(), ServerFnError>>,
 ) -> impl IntoView {
     let (is_editing, set_is_editing) = signal(false);
-    let (edit_value, set_edit_value) = signal(field_name.clone());
-    let (display_name, set_display_name) = signal(field_name);
+    let (edit_value, set_edit_value) = signal(field_name.get_untracked());
+    let (display_name, set_display_name) = signal(field_name.get_untracked());
+
+    // Sync with external changes
+    Effect::new(move |_| {
+        let name = field_name.get();
+        set_display_name.set(name.clone());
+        if !is_editing.get_untracked() {
+            set_edit_value.set(name);
+        }
+    });
 
     let input_ref = NodeRef::<leptos::html::Input>::new();
     Effect::new(move |_| {
@@ -88,7 +97,7 @@ pub fn EditableFieldHeader(
                 if is_editing.get() {
                     view! {
                         <div class="flex items-center gap-2 w-full">
-                            <FieldIcon config=config.clone() />
+                            <FieldIcon config=config.get() />
                             <input
                                 node_ref=input_ref
                                 type="text"
@@ -121,7 +130,7 @@ pub fn EditableFieldHeader(
                                 set_is_editing.set(true);
                             }
                         >
-                            <FieldIcon config=config.clone() />
+                            <FieldIcon config=config.get() />
                             <span>{move || display_name.get()}</span>
                         </div>
                     }
@@ -218,9 +227,7 @@ pub fn InlineFieldCreator(
                         _ => {}
                     }
                 }
-                on:blur=move |_| {
-                    // on_cancel.run(())
-                }
+
             />
         </div>
     }

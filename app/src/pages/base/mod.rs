@@ -348,19 +348,20 @@ fn TableGrid(base_id: String, table_id: String, is_active: Memo<bool>) -> impl I
         }
     });
 
+    let fields_memo = Memo::new(move |_| {
+        data_signal.get().map(|d| d.fields).unwrap_or_default()
+    });
+    let records_memo = Memo::new(move |_| {
+        data_signal.get().map(|d| d.records).unwrap_or_default()
+    });
+
     view! {
         <div class:hidden=move || !is_active.get()>
-            {move || {
-                if !has_loaded_once.get() {
-                    view! { <p class="p-8 text-muted-foreground animate-pulse">"Preparing table..."</p> }
-                        .into_any()
-                } else {
-                    let fields_memo = Memo::new(move |_| {
-                        data_signal.get().map(|d| d.fields).unwrap_or_default()
-                    });
-                    let records_memo = Memo::new(move |_| {
-                        data_signal.get().map(|d| d.records).unwrap_or_default()
-                    });
+            <Show
+                when=move || has_loaded_once.get()
+                fallback=|| view! { <p class="p-8 text-muted-foreground animate-pulse">"Preparing table..."</p> }
+            >
+                {
                     let base_id_for_cells = base_id_sv.get_value();
                     view! {
                         <DataTableWrapper class="w-full border rounded-md shadow-sm">
@@ -376,16 +377,41 @@ fn TableGrid(base_id: String, table_id: String, is_active: Memo<bool>) -> impl I
                                             {
                                                 let field_id = field.id.clone();
                                                 let field_id_for_delete = field_id.clone();
-                                                let field_name = field.name.clone();
-                                                let config = field.config.clone();
                                                 view! {
                                                     <DataTableHead class="font-bold border-r last:border-r-0 min-w-[200px] p-0">
                                                         <ContextMenu>
                                                             <ContextMenuTrigger class="flex items-center gap-2 w-full h-full hover:bg-muted/50 transition-colors cursor-context-menu">
                                                                 <EditableFieldHeader
                                                                     field_id=field_id.clone()
-                                                                    field_name=field_name.clone()
-                                                                    config=config.clone()
+                                                                    field_name=Signal::derive({
+                                                                        let field_id = field_id.clone();
+                                                                        move || {
+                                                                            data_signal
+                                                                                .get()
+                                                                                .and_then(|d| {
+                                                                                    d.fields.iter().find(|f| f.id == field_id).map(|f| f.name.clone())
+                                                                                })
+                                                                                .unwrap_or_default()
+                                                                        }
+                                                                    })
+                                                                    config=Signal::derive({
+                                                                        let field_id = field_id.clone();
+                                                                        move || {
+                                                                            data_signal
+                                                                                .get()
+                                                                                .and_then(|d| {
+                                                                                    d.fields.iter().find(|f| f.id == field_id).map(|f| f.config.clone())
+                                                                                })
+                                                                                .unwrap_or_else(|| {
+                                                                                    charac::models::field::FieldConfig::Text(
+                                                                                        charac::models::field::TextConfig::SingleLine {
+                                                                                            default: None,
+                                                                                            max_length: 255,
+                                                                                        },
+                                                                                    )
+                                                                                })
+                                                                        }
+                                                                    })
                                                                     rename_action=rename_field_action
                                                                 />
                                                             </ContextMenuTrigger>
@@ -465,7 +491,6 @@ fn TableGrid(base_id: String, table_id: String, is_active: Memo<bool>) -> impl I
                                             let record_id = record.id.clone();
                                             let base_id = base_id_for_cells.clone();
                                             let record_id_for_delete = record_id.clone();
-                                            let record_cells = record.cells.clone();
                                             view! {
                                                 <DataTableRow class="group hover:bg-muted/50">
                                                     <DataTableCell class="w-10 p-0 text-center border-r text-xs text-muted-foreground">
@@ -504,39 +529,57 @@ fn TableGrid(base_id: String, table_id: String, is_active: Memo<bool>) -> impl I
                                                             </ContextMenuContent>
                                                         </ContextMenu>
                                                     </DataTableCell>
-                                                    {move || {
-                                                        fields_memo
-                                                            .get()
-                                                            .into_iter()
-                                                            .map({
-                                                                let record_cells = record_cells.clone();
-                                                                let record_id = record_id.clone();
-                                                                let base_id = base_id.clone();
-                                                                move |field| {
-                                                                    let field_id = field.id.clone();
-                                                                    let value = record_cells
-                                                                        .get(&field_id)
-                                                                        .cloned()
-                                                                        .unwrap_or_default();
-                                                                    let config = field.config.clone();
-                                                                    let record_id = record_id.clone();
-                                                                    let base_id = base_id.clone();
-                                                                    view! {
-                                                                        <DataTableCell class="px-0 py-0 h-10 border-r last:border-r-0">
-                                                                            <EditableCell
-                                                                                value=value
-                                                                                config=config
-                                                                                record_id=record_id
-                                                                                field_name=field_id
-                                                                                base_id=base_id
-                                                                                update_action=update_action
-                                                                            />
-                                                                        </DataTableCell>
-                                                                    }
-                                                                }
-                                                            })
-                                                            .collect_view()
-                                                    }}
+                                                    <For
+                                                        each=move || fields_memo.get()
+                                                        key=|f| f.id.clone()
+                                                        let:field
+                                                    >
+                                                        {
+                                                            let field_id = field.id.clone();
+                                                            let record_id = record_id.clone();
+                                                            let base_id = base_id.clone();
+                                                            view! {
+                                                                <DataTableCell class="px-0 py-0 h-10 border-r last:border-r-0">
+                                                                    <EditableCell
+                                                                        value=Signal::derive({
+                                                                            let record_id = record_id.clone();
+                                                                            let field_id = field_id.clone();
+                                                                            move || {
+                                                                                data_signal
+                                                                                    .get()
+                                                                                    .and_then(|d| {
+                                                                                        d.records.iter().find(|r| r.id == record_id).and_then(|r| r.cells.get(&field_id).cloned())
+                                                                                    })
+                                                                                    .unwrap_or_default()
+                                                                            }
+                                                                        })
+                                                                        config=Signal::derive({
+                                                                            let field_id = field_id.clone();
+                                                                            move || {
+                                                                                data_signal
+                                                                                    .get()
+                                                                                    .and_then(|d| {
+                                                                                        d.fields.iter().find(|f| f.id == field_id).map(|f| f.config.clone())
+                                                                                    })
+                                                                                    .unwrap_or_else(|| {
+                                                                                        charac::models::field::FieldConfig::Text(
+                                                                                            charac::models::field::TextConfig::SingleLine {
+                                                                                                default: None,
+                                                                                                max_length: 255,
+                                                                                            },
+                                                                                        )
+                                                                                    })
+                                                                            }
+                                                                        })
+                                                                        record_id=record_id.clone()
+                                                                        field_name=field_id.clone()
+                                                                        base_id=base_id.clone()
+                                                                        update_action=update_action
+                                                                    />
+                                                                </DataTableCell>
+                                                            }
+                                                        }
+                                                    </For>
                                                     <DataTableCell class="w-10 p-0">""</DataTableCell>
                                                 </DataTableRow>
                                             }
@@ -562,17 +605,16 @@ fn TableGrid(base_id: String, table_id: String, is_active: Memo<bool>) -> impl I
                             </DataTable>
                         </DataTableWrapper>
                     }
-                        .into_any()
                 }
-            }}
+            </Show>
         </div>
     }
 }
 
 #[component]
 fn EditableCell(
-    value: String,
-    config: charac::models::field::FieldConfig,
+    value: Signal<String>,
+    config: Signal<charac::models::field::FieldConfig>,
     record_id: String,
     field_name: String,
     base_id: String,
@@ -581,20 +623,20 @@ fn EditableCell(
     use charac::models::{FieldConfig, TextConfig};
 
     let (is_editing, set_is_editing) = signal(false);
-    let (edit_value, set_edit_value) = signal(value.clone());
-    let (display_value, set_display_value) = signal(value.clone());
+    let (edit_value, set_edit_value) = signal(value.get_untracked());
+    let (display_value, set_display_value) = signal(value.get_untracked());
     let (error_msg, set_error_msg) = signal::<Option<String>>(None);
 
-    // Sync with prop changes from parent
-    Effect::new({
-        let value = value.clone();
-        move |_| {
-            set_display_value.set(value.clone());
-            set_edit_value.set(value.clone());
+    // Sync with external changes
+    Effect::new(move |_| {
+        let v = value.get();
+        set_display_value.set(v.clone());
+        if !is_editing.get_untracked() {
+            set_edit_value.set(v);
         }
     });
 
-    let input_type = match &config {
+    let input_type = move || match &config.get() {
         FieldConfig::Number(_) => "number",
         FieldConfig::Text(t) => match t {
             TextConfig::Email { .. } => "email",
@@ -616,7 +658,6 @@ fn EditableCell(
     });
 
     let save = {
-        let config = config.clone();
         let record_id = record_id.clone();
         let field_name = field_name.clone();
         let base_id = base_id.clone();
@@ -626,7 +667,7 @@ fn EditableCell(
             } else {
                 return;
             };
-            let validation_result = match &config {
+            let validation_result = match &config.get_untracked() {
                 FieldConfig::Text(text_config) => match text_config {
                     TextConfig::SingleLine { .. } => {
                         if val.contains('\n') || val.contains('\r') {
