@@ -475,10 +475,23 @@ pub async fn update_record_cell(
         }
         FieldConfig::Datetime(_) => {
             // Parse datetime from string
-            use chrono::DateTime;
+            use chrono::{DateTime, FixedOffset, NaiveDate, TimeZone, Utc};
             use std::str::FromStr;
-            let dt = DateTime::from_str(&new_value)
-                .map_err(|_| ServerFnError::new("Invalid datetime format. Use ISO 8601 format."))?;
+
+            let dt = if new_value.len() == 10 {
+                // Try parsing as YYYY-MM-DD (standard browser date input)
+                NaiveDate::parse_from_str(&new_value, "%Y-%m-%d")
+                    .map(|d| d.and_hms_opt(0, 0, 0).unwrap())
+                    .map(|d| Utc.from_utc_datetime(&d))
+                    .map_err(|_| ServerFnError::new("Invalid date format. Use YYYY-MM-DD."))?
+            } else {
+                DateTime::<FixedOffset>::from_str(&new_value)
+                    .map(|dt| dt.with_timezone(&Utc))
+                    .map_err(|_| {
+                        ServerFnError::new("Invalid datetime format. Use ISO 8601 format.")
+                    })?
+            };
+
             use charac::models::record::cell::DateValue;
             Value::Date(DateValue::new(dt.into()))
         }

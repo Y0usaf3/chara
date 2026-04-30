@@ -244,6 +244,16 @@ fn TableGrid(base_id: String, table_id: String, is_active: Memo<bool>) -> impl I
         |(b_id, t_id, _)| async move { get_table_data(b_id, t_id).await },
     );
 
+    let data_signal = RwSignal::new(None::<TableData>);
+    let (has_loaded_once, set_has_loaded_once) = signal(false);
+
+    Effect::new(move |_| {
+        if let Some(Ok(data)) = table_data_res.get() {
+            data_signal.set(Some(data));
+            set_has_loaded_once.set(true);
+        }
+    });
+
     Effect::new(move |_| {
         if is_active.get() {
             set_refresh_counter.update(|n| *n += 1);
@@ -340,228 +350,221 @@ fn TableGrid(base_id: String, table_id: String, is_active: Memo<bool>) -> impl I
 
     view! {
         <div class:hidden=move || !is_active.get()>
-            <Transition fallback=|| {
-                view! { <p>"Loading table data..."</p> }
-            }>
-                {move || {
-                    table_data_res
-                        .get()
-                        .map(|res| {
-                            match res {
-                                Ok(data) => {
-                                    let fields_sv = StoredValue::new(data.fields.clone());
-                                    let base_id_for_cells = base_id_sv.get_value();
-                                    view! {
-                                        <DataTableWrapper class="w-full border rounded-md">
-                                            <DataTable class="w-full max-w-none border-collapse">
-                                                <DataTableHeader>
-                                                    <DataTableRow>
-                                                        <DataTableHead class="w-10 p-0 text-center border-r">
-                                                            "#"
-                                                        </DataTableHead>
-                                                        {fields_sv
-                                                            .get_value()
-                                                            .into_iter()
-                                                            .map(|field| {
-                                                                let field_id = field.id.clone();
-                                                                let field_id_for_rename = field_id.clone();
-                                                                let field_id_for_delete = field_id.clone();
-                                                                let field_name = field.name.clone();
-                                                                let field_name_for_header = field_name.clone();
-                                                                let field_name_for_dialog = field_name.clone();
-                                                                view! {
-                                                                    <DataTableHead class="font-bold border-r last:border-r-0 min-w-[200px] p-0">
-                                                                        <ContextMenu>
-                                                                            <ContextMenuTrigger class="flex items-center gap-2 w-full h-full hover:bg-muted/50 transition-colors cursor-context-menu">
-                                                                                <EditableFieldHeader
-                                                                                    field_id=field_id.clone()
-                                                                                    field_name=field_name.clone()
-                                                                                    config=field.config.clone()
-                                                                                    rename_action=rename_field_action
-                                                                                />
-                                                                            </ContextMenuTrigger>
-                                                                            <ContextMenuContent>
-                                                                                <ContextMenuLabel>"Field Actions"</ContextMenuLabel>
-                                                                                <Separator class="my-1" />
-                                                                                <ContextMenuGroup>
-                                                                                    <ContextMenuItem>
-                                                                                        <CreateFieldDialog
-                                                                                            title=move || {
-                                                                                                view! {
-                                                                                                    <ContextMenuAction>
-                                                                                                        <Plus class="size-4 mr-2" />
-                                                                                                        "Add Field"
-                                                                                                    </ContextMenuAction>
-                                                                                                }
-                                                                                            }
-                                                                                            create_action=create_field_action
-                                                                                        />
-                                                                                    </ContextMenuItem>
-                                                                                </ContextMenuGroup>
-                                                                                <Separator class="my-1" />
-                                                                                <ContextMenuGroup>
-                                                                                    <ContextMenuItem>
-                                                                                        <ContextMenuAction
-                                                                                            class="text-destructive focus:text-destructive"
-                                                                                            on:click=move |_| {
-                                                                                                delete_field_action.dispatch(field_id_for_delete.clone());
-                                                                                            }
-                                                                                        >
-                                                                                            <Trash class="size-4 mr-2" />
-                                                                                            "Delete Field"
-                                                                                        </ContextMenuAction>
-                                                                                    </ContextMenuItem>
-                                                                                </ContextMenuGroup>
-                                                                            </ContextMenuContent>
-                                                                        </ContextMenu>
-                                                                    </DataTableHead>
-                                                                }
-                                                            })
-                                                            .collect_view()}
-                                                        {move || {
-                                                            is_creating_field
-                                                                .get()
-                                                                .then(|| {
-                                                                    view! {
-                                                                        <DataTableHead class="font-bold border-r last:border-r-0 min-w-[200px] p-0">
-                                                                            <InlineFieldCreator
-                                                                                create_action=create_field_action
-                                                                                on_cancel=Callback::new(move |_| {
-                                                                                    set_is_creating_field.set(false);
-                                                                                })
-                                                                            />
-                                                                        </DataTableHead>
-                                                                    }
-                                                                })
-                                                        }}
-                                                        <DataTableHead class="w-10 p-0 text-center">
-                                                            <Button
-                                                                variant=ButtonVariant::Ghost
-                                                                size=ButtonSize::Icon
-                                                                on:click=move |_| set_is_creating_field.set(true)
-                                                            >
-                                                                <Plus class="size-4" />
-                                                            </Button>
-                                                        </DataTableHead>
-                                                    </DataTableRow>
-                                                </DataTableHeader>
-                                                <DataTableBody>
-                                                    <For
-                                                        each=move || data.records.clone()
-                                                        key=|record| record.id.clone()
-                                                        let:record
-                                                    >
-                                                        {
-                                                            let record_cells = record.cells.clone();
-                                                            let record_id = record.id.clone();
-                                                            let base_id = base_id_for_cells.clone();
-                                                            let record_id_for_delete = record_id.clone();
-                                                            view! {
-                                                                <DataTableRow class="group hover:bg-muted/50">
-                                                                    <DataTableCell class="w-10 p-0 text-center border-r text-xs text-muted-foreground">
-                                                                        <ContextMenu>
-                                                                            <ContextMenuTrigger class="w-full h-full flex items-center justify-center cursor-context-menu">
-                                                                                <List class="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                                                            </ContextMenuTrigger>
-                                                                            <ContextMenuContent>
-                                                                                <ContextMenuLabel>"Record Actions"</ContextMenuLabel>
-                                                                                <Separator class="my-1" />
-                                                                                <ContextMenuGroup>
-                                                                                    <ContextMenuItem>
-                                                                                        <ContextMenuAction on:click=move |_| {
-                                                                                            create_record_action.dispatch(());
-                                                                                        }>
-                                                                                            <Plus class="size-4 mr-2" />
-                                                                                            "Add Record"
-                                                                                        </ContextMenuAction>
-                                                                                    </ContextMenuItem>
-                                                                                </ContextMenuGroup>
-                                                                                <Separator class="my-1" />
-                                                                                <ContextMenuGroup>
-                                                                                    <ContextMenuItem>
-                                                                                        <ContextMenuAction
-                                                                                            class="text-destructive focus:text-destructive"
-                                                                                            on:click=move |_| {
-                                                                                                delete_record_action.dispatch(record_id_for_delete.clone());
-                                                                                            }
-                                                                                        >
-                                                                                            <Trash class="size-4 mr-2" />
-                                                                                            "Delete Record"
-                                                                                        </ContextMenuAction>
-                                                                                    </ContextMenuItem>
-                                                                                </ContextMenuGroup>
-                                                                            </ContextMenuContent>
-                                                                        </ContextMenu>
-                                                                    </DataTableCell>
-                                                                    {fields_sv
-                                                                        .get_value()
-                                                                        .into_iter()
-                                                                        .map({
-                                                                            let record_cells = record_cells.clone();
-                                                                            let record_id = record_id.clone();
-                                                                            let base_id = base_id.clone();
-                                                                            move |field| {
-                                                                                let field_id = field.id.clone();
-                                                                                let value = record_cells
-                                                                                    .get(&field_id)
-                                                                                    .cloned()
-                                                                                    .unwrap_or_default();
-                                                                                let config = field.config.clone();
-                                                                                let record_id = record_id.clone();
-                                                                                let base_id = base_id.clone();
+            {move || {
+                if !has_loaded_once.get() {
+                    view! { <p class="p-8 text-muted-foreground animate-pulse">"Preparing table..."</p> }
+                        .into_any()
+                } else {
+                    let fields_memo = Memo::new(move |_| {
+                        data_signal.get().map(|d| d.fields).unwrap_or_default()
+                    });
+                    let records_memo = Memo::new(move |_| {
+                        data_signal.get().map(|d| d.records).unwrap_or_default()
+                    });
+                    let base_id_for_cells = base_id_sv.get_value();
+                    view! {
+                        <DataTableWrapper class="w-full border rounded-md shadow-sm">
+                            <DataTable class="w-full max-w-none border-collapse">
+                                <DataTableHeader>
+                                    <DataTableRow>
+                                        <DataTableHead class="w-10 p-0 text-center border-r">"#"</DataTableHead>
+                                        <For
+                                            each=move || fields_memo.get()
+                                            key=|field| field.id.clone()
+                                            let:field
+                                        >
+                                            {
+                                                let field_id = field.id.clone();
+                                                let field_id_for_delete = field_id.clone();
+                                                let field_name = field.name.clone();
+                                                let config = field.config.clone();
+                                                view! {
+                                                    <DataTableHead class="font-bold border-r last:border-r-0 min-w-[200px] p-0">
+                                                        <ContextMenu>
+                                                            <ContextMenuTrigger class="flex items-center gap-2 w-full h-full hover:bg-muted/50 transition-colors cursor-context-menu">
+                                                                <EditableFieldHeader
+                                                                    field_id=field_id.clone()
+                                                                    field_name=field_name.clone()
+                                                                    config=config.clone()
+                                                                    rename_action=rename_field_action
+                                                                />
+                                                            </ContextMenuTrigger>
+                                                            <ContextMenuContent>
+                                                                <ContextMenuLabel>"Field Actions"</ContextMenuLabel>
+                                                                <Separator class="my-1" />
+                                                                <ContextMenuGroup>
+                                                                    <ContextMenuItem>
+                                                                        <CreateFieldDialog
+                                                                            title=move || {
                                                                                 view! {
-                                                                                    <DataTableCell class="px-0 py-0 h-10 border-r last:border-r-0">
-                                                                                        <EditableCell
-                                                                                            value=value
-                                                                                            config=config
-                                                                                            record_id=record_id
-                                                                                            field_name=field_id
-                                                                                            base_id=base_id
-                                                                                            update_action=update_action
-                                                                                        />
-                                                                                    </DataTableCell>
+                                                                                    <ContextMenuAction>
+                                                                                        <Plus class="size-4 mr-2" />
+                                                                                        "Add Field"
+                                                                                    </ContextMenuAction>
                                                                                 }
                                                                             }
-                                                                        })
-                                                                        .collect_view()}
-                                                                    <DataTableCell class="w-10 p-0">""</DataTableCell>
-                                                                </DataTableRow>
-                                                            }
-                                                        }
-                                                    </For>
-                                                    <DataTableRow
-                                                        class="cursor-pointer hover:bg-muted/50 text-muted-foreground transition-colors"
-                                                        on:click=move |_| {
-                                                            create_record_action.dispatch(());
-                                                        }
-                                                    >
-                                                        <DataTableCell
-                                                            attr:colspan=move || fields_sv.get_value().len() + 2
-                                                            class="h-10 px-4"
-                                                        >
-                                                            <div class="flex items-center gap-2">
-                                                                <Plus class="size-4" />
-                                                                "New Record"
-                                                            </div>
-                                                        </DataTableCell>
-                                                    </DataTableRow>
-                                                </DataTableBody>
-                                            </DataTable>
-                                        </DataTableWrapper>
-                                    }
-                                        .into_any()
-                                }
-                                Err(e) => {
-                                    view! {
-                                        <p class="text-destructive">{format!("Error: {}", e)}</p>
-                                    }
-                                        .into_any()
-                                }
-                            }
-                        })
-                        .unwrap_or_else(|| view! { <p>"Preparing table..."</p> }.into_any())
-                }}
-            </Transition>
+                                                                            create_action=create_field_action
+                                                                        />
+                                                                    </ContextMenuItem>
+                                                                </ContextMenuGroup>
+                                                                <Separator class="my-1" />
+                                                                <ContextMenuGroup>
+                                                                    <ContextMenuItem>
+                                                                        <ContextMenuAction
+                                                                            class="text-destructive focus:text-destructive"
+                                                                            on:click=move |_| {
+                                                                                delete_field_action
+                                                                                    .dispatch(field_id_for_delete.clone());
+                                                                            }
+                                                                        >
+                                                                            <Trash class="size-4 mr-2" />
+                                                                            "Delete Field"
+                                                                        </ContextMenuAction>
+                                                                    </ContextMenuItem>
+                                                                </ContextMenuGroup>
+                                                            </ContextMenuContent>
+                                                        </ContextMenu>
+                                                    </DataTableHead>
+                                                }
+                                            }
+                                        </For>
+                                        {move || {
+                                            is_creating_field
+                                                .get()
+                                                .then(|| {
+                                                    view! {
+                                                        <DataTableHead class="font-bold border-r last:border-r-0 min-w-[200px] p-0">
+                                                            <InlineFieldCreator
+                                                                create_action=create_field_action
+                                                                on_cancel=Callback::new(move |_| {
+                                                                    set_is_creating_field.set(false);
+                                                                })
+                                                            />
+                                                        </DataTableHead>
+                                                    }
+                                                })
+                                        }}
+                                        <DataTableHead class="w-10 p-0 text-center">
+                                            <Button
+                                                variant=ButtonVariant::Ghost
+                                                size=ButtonSize::Icon
+                                                on:click=move |_| set_is_creating_field.set(true)
+                                            >
+                                                <Plus class="size-4" />
+                                            </Button>
+                                        </DataTableHead>
+                                    </DataTableRow>
+                                </DataTableHeader>
+                                <DataTableBody>
+                                    <For
+                                        each=move || records_memo.get()
+                                        key=|record| record.id.clone()
+                                        let:record
+                                    >
+                                        {
+                                            let record_id = record.id.clone();
+                                            let base_id = base_id_for_cells.clone();
+                                            let record_id_for_delete = record_id.clone();
+                                            let record_cells = record.cells.clone();
+                                            view! {
+                                                <DataTableRow class="group hover:bg-muted/50">
+                                                    <DataTableCell class="w-10 p-0 text-center border-r text-xs text-muted-foreground">
+                                                        <ContextMenu>
+                                                            <ContextMenuTrigger class="w-full h-full flex items-center justify-center cursor-context-menu">
+                                                                <List class="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                                            </ContextMenuTrigger>
+                                                            <ContextMenuContent>
+                                                                <ContextMenuLabel>"Record Actions"</ContextMenuLabel>
+                                                                <Separator class="my-1" />
+                                                                <ContextMenuGroup>
+                                                                    <ContextMenuItem>
+                                                                        <ContextMenuAction on:click=move |_| {
+                                                                            create_record_action.dispatch(());
+                                                                        }>
+                                                                            <Plus class="size-4 mr-2" />
+                                                                            "Add Record"
+                                                                        </ContextMenuAction>
+                                                                    </ContextMenuItem>
+                                                                </ContextMenuGroup>
+                                                                <Separator class="my-1" />
+                                                                <ContextMenuGroup>
+                                                                    <ContextMenuItem>
+                                                                        <ContextMenuAction
+                                                                            class="text-destructive focus:text-destructive"
+                                                                            on:click=move |_| {
+                                                                                delete_record_action
+                                                                                    .dispatch(record_id_for_delete.clone());
+                                                                            }
+                                                                        >
+                                                                            <Trash class="size-4 mr-2" />
+                                                                            "Delete Record"
+                                                                        </ContextMenuAction>
+                                                                    </ContextMenuItem>
+                                                                </ContextMenuGroup>
+                                                            </ContextMenuContent>
+                                                        </ContextMenu>
+                                                    </DataTableCell>
+                                                    {move || {
+                                                        fields_memo
+                                                            .get()
+                                                            .into_iter()
+                                                            .map({
+                                                                let record_cells = record_cells.clone();
+                                                                let record_id = record_id.clone();
+                                                                let base_id = base_id.clone();
+                                                                move |field| {
+                                                                    let field_id = field.id.clone();
+                                                                    let value = record_cells
+                                                                        .get(&field_id)
+                                                                        .cloned()
+                                                                        .unwrap_or_default();
+                                                                    let config = field.config.clone();
+                                                                    let record_id = record_id.clone();
+                                                                    let base_id = base_id.clone();
+                                                                    view! {
+                                                                        <DataTableCell class="px-0 py-0 h-10 border-r last:border-r-0">
+                                                                            <EditableCell
+                                                                                value=value
+                                                                                config=config
+                                                                                record_id=record_id
+                                                                                field_name=field_id
+                                                                                base_id=base_id
+                                                                                update_action=update_action
+                                                                            />
+                                                                        </DataTableCell>
+                                                                    }
+                                                                }
+                                                            })
+                                                            .collect_view()
+                                                    }}
+                                                    <DataTableCell class="w-10 p-0">""</DataTableCell>
+                                                </DataTableRow>
+                                            }
+                                        }
+                                    </For>
+                                    <DataTableRow
+                                        class="cursor-pointer hover:bg-muted/50 text-muted-foreground transition-colors border-t"
+                                        on:click=move |_| {
+                                            create_record_action.dispatch(());
+                                        }
+                                    >
+                                        <DataTableCell
+                                            attr:colspan=move || fields_memo.get().len() + 2
+                                            class="h-10 px-4"
+                                        >
+                                            <div class="flex items-center gap-2">
+                                                <Plus class="size-4" />
+                                                "New Record"
+                                            </div>
+                                        </DataTableCell>
+                                    </DataTableRow>
+                                </DataTableBody>
+                            </DataTable>
+                        </DataTableWrapper>
+                    }
+                        .into_any()
+                }
+            }}
         </div>
     }
 }
@@ -579,8 +582,17 @@ fn EditableCell(
 
     let (is_editing, set_is_editing) = signal(false);
     let (edit_value, set_edit_value) = signal(value.clone());
-    let (display_value, set_display_value) = signal(value);
+    let (display_value, set_display_value) = signal(value.clone());
     let (error_msg, set_error_msg) = signal::<Option<String>>(None);
+
+    // Sync with prop changes from parent
+    Effect::new({
+        let value = value.clone();
+        move |_| {
+            set_display_value.set(value.clone());
+            set_edit_value.set(value.clone());
+        }
+    });
 
     let input_type = match &config {
         FieldConfig::Number(_) => "number",
@@ -590,6 +602,7 @@ fn EditableCell(
             TextConfig::Phone { .. } => "tel",
             _ => "text",
         },
+        FieldConfig::Datetime(_) => "date",
         _ => "text",
     };
 
@@ -648,9 +661,9 @@ fn EditableCell(
                 }
                 FieldConfig::Datetime(_) => {
                     if !val.is_empty() {
-                        use chrono::DateTime;
-                        if DateTime::parse_from_str(&val, "%Y-%M-%D").is_err() {
-                            Err("Invalid datetime (use ISO 8601)".to_string())
+                        use chrono::NaiveDate;
+                        if NaiveDate::parse_from_str(&val, "%Y-%m-%d").is_err() {
+                            Err("Invalid date (use YYYY-MM-DD)".to_string())
                         } else {
                             Ok(())
                         }
