@@ -51,6 +51,7 @@ COPY --from=builder /app/target/aarch64-unknown-linux-gnu/release/server /app/ch
 COPY --from=builder /app/target/site /app/site
 
 RUN echo | ls -R
+COPY bit/ /app/bit/
 
 ENV RUST_LOG="info"
 ENV LEPTOS_SITE_ADDR="0.0.0.0:3000"
