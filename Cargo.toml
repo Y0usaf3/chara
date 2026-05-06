@@ -45,7 +45,7 @@ hex = "0.4.3"
 tw_merge = { version = "0.1.20", features = ["variant"] }
 icons = { version = "0.18.0", features = ["leptos"] }
 leptos_ui = "0.3.21"
-rand = "0.10.0"
+rand = "0.10.1"
 web-sys = { version = "0.3.92", features = ["Storage", "MediaQueryList", "Window"] }
 axum-extra = { version = "0.12.5", features = ["cookie", "cookie-private", "cookie-signed", "typed-header"] }
 headers = "0.4.1"
